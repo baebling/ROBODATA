@@ -1,0 +1,22 @@
+train_path: ../outputs/demo/inputs/train.json
+val_path: ../outputs/demo/inputs/val.json
+keypoint_names:
+  - tool:tip
+  - tool:axis_base
+  - tool:side
+  - tool:top
+  - tool:rear_left
+  - tool:rear_right
+  - tool:back_top
+  - tool:front_left
+  - surface:bottom_left
+  - surface:bottom_right
+  - surface:top_right
+  - surface:top_left
+image_size: 64
+width: 16
+epochs: 80
+batch_size: 8
+learning_rate: 0.002
+seed: 42
+device: cpu

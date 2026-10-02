@@ -1,0 +1,20 @@
+schema_version: 1
+manifest_path: ../data/raw/manifest.json
+mode: rgbd
+metric_scale_source: depth_sensor
+camera_motion: static
+surface_frame_id: measured_patch_A
+surface_method: depth_plane
+depth_unit_m: 0.001
+depth_range_m: [0.05, 10.0]
+plane_threshold_m: 0.01
+min_plane_inlier_ratio: 0.7
+horizon_sec: 0.2
+timestamp_tolerance_sec: 0.04
+seed: 42
+tool:
+  origin_key: tip
+  axis_from: axis_base
+  axis_to: tip
+  x_key: side
+surface: {}

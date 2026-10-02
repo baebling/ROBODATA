@@ -1,0 +1,19 @@
+# Template only. Replace both identity matrices with independently measured
+# calibration. Identity here is not evidence of a shared physical frame.
+episode_id: real_episode_001
+task_name: replace_with_actual_task
+surface_frame_id: measured_patch_001
+instrument: replace_with_actual_mocap_or_tracker
+T_surface_tracking:
+  - [1, 0, 0, 0]
+  - [0, 1, 0, 0]
+  - [0, 0, 1, 0]
+  - [0, 0, 0, 1]
+T_marker_tool:
+  - [1, 0, 0, 0]
+  - [0, 1, 0, 0]
+  - [0, 0, 1, 0]
+  - [0, 0, 0, 1]
+time_offset_sec: 0.0
+horizon_sec: 0.2
+timestamp_tolerance_sec: 0.04

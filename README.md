@@ -1,0 +1,98 @@
+# ROBODATA
+
+Research code for video-derived **surface-relative tool-motion datasets**.
+The main record is `T_surface_tool(t)` with functional point/axis, standoff,
+incidence, time derivatives, future targets, failures and provenance.
+
+This version implements calibrated RGB landmark PnP, optional checked optical
+flow, aligned RGB-D plane/tool estimation, a trainable RGB heatmap/visibility
+network, independent GT import/evaluation, masked NPZ export and visual reports.
+It is a runnable research baseline. Real construction-video accuracy is not
+established; no real pretrained tool detector is bundled.
+
+## Run
+
+Python 3.10+ (WSL/Linux or Windows). From this repository:
+
+```sh
+python3 -m venv .venv
+.venv/bin/python -m pip install --upgrade pip
+.venv/bin/python -m pip install -e '.[dev]'
+.venv/bin/robodata demo --output outputs/demo
+```
+
+On Windows use `.venv\Scripts\python.exe` and `.venv\Scripts\robodata.exe`.
+The demo renders a 40-frame RGB video and depth, extracts both pipelines, saves
+JSON/NPZ, compares against analytic truth, and creates trajectory/overlay figures.
+One frame is deliberately occluded. Choose a new output folder for each run.
+
+## Train RGB Perception
+
+Install a platform-appropriate PyTorch build, or `pip install -e '.[learning]'`.
+Then run the synthetic smoke example:
+
+```sh
+.venv/bin/robodata train --config configs/train_synthetic.yaml --checkpoint outputs/demo/landmarks.pt
+.venv/bin/robodata infer --checkpoint outputs/demo/landmarks.pt --manifest outputs/demo/inputs/manifest.json --output outputs/demo/predicted_landmarks.json
+.venv/bin/robodata run --config outputs/demo/inputs/rgb.yaml --manifest outputs/demo/predicted_landmarks.json --output outputs/neural_rgb
+```
+
+Detector confidence thresholds can cause low-coverage runs; inspect summary,
+residuals and figures. Geometry tests with exact landmarks do not measure the
+neural detector. Train on real semantic landmark annotations and hold out entire
+workers/tools/scenes before reporting research accuracy. The smoke training uses
+synthetic images and a small within-episode holdout.
+
+## Real Input
+
+Copy and edit `configs/rgb.yaml` or `configs/rgbd.yaml`, using measured geometry
+and calibration. The manifest contains `episode_id`, `task_name`, `video_path`,
+`camera` (`matrix`, `distortion`, `width`, `height`), `data_kind`, explicit
+`timestamps_sec`, and frame-indexed `observations`. Each observation has
+`tool`/`surface` named `keypoints` (`uv`, `visible`, `confidence`), optional masks,
+aligned `depth_path`, and sourced process annotations. See generated
+`outputs/demo/inputs/manifest.json` for a complete example.
+
+RGB needs at least six visible nonplanar known tool landmarks (or four planar
+points) and four measured surface landmarks. Geometry is expressed directly in
+the intended functional frame. Camera motion is handled by estimating both
+frames from persistent landmarks. Sparse manual initialization plus optical
+flow is supported; a trained detector supplies automatic observations.
+
+RGB-D needs rectified aligned depth, a surface mask and semantic functional
+point/axis landmarks. A secondary landmark fixes roll. Plane-only references
+require a static camera; moving-camera RGB-D must use surface PnP landmarks.
+Masks/keypoints are bootstrap observations or model outputs, not assumed final
+external research inputs. Their sources are retained with every frame.
+
+```sh
+.venv/bin/robodata run --config configs/rgb.yaml --output outputs/real_rgb_001
+.venv/bin/robodata evaluate --prediction outputs/real_rgb_001/episode.json --reference data/gold/episode.json --output outputs/real_rgb_001/evaluation.json
+.venv/bin/robodata export --episode outputs/real_rgb_001/episode.json --output outputs/real_rgb_001/learning.npz
+```
+
+`import-gt --csv measurements.csv --calibration calibration.yaml --output gold.json`
+converts independent marker poses into the same physical surface/tool frame.
+See [Data Schema](docs/DATA_SCHEMA.md) for required transforms and clock offset.
+`configs/gt_calibration.yaml` is a calibration template, not a measured reference.
+Keep raw videos/measurements under `data/raw/` or external storage; they are ignored by Git.
+
+## Research and Checks
+
+[Context](docs/RESEARCH_CONTEXT.md), [decisions](docs/DECISION_LOG.md),
+[model](docs/SYSTEM_SPEC.md), [contract](docs/DATA_SCHEMA.md), [evaluation](docs/EVALUATION_PLAN.md),
+[references](docs/references/RELATED_WORK.md), [open questions](docs/OPEN_QUESTIONS.md).
+[Local verification](docs/VERIFICATION.md) separates synthetic geometry tests
+from learned-detector results and real-data claims.
+
+```sh
+.venv/bin/python -m ruff format --check src tests
+.venv/bin/python -m ruff check src tests
+.venv/bin/python -m mypy --config-file pyproject.toml src/robodata
+.venv/bin/python -m pytest -q
+```
+
+Tests cover known-distance geometry, plane outliers/degeneracy, invalid SE(3),
+timestamp/gap behavior, missing GT matches, RGB/RGB-D serialization, marker
+calibration and neural gradients/reload. Scripts store configuration, source
+commit/dirty state and software versions. Generated weights/data stay outside Git.

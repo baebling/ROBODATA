@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=68,<82"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "robodata"
+version = "0.1.0"
+description = "Video-derived surface-relative tool trajectories and action labels"
+requires-python = ">=3.10"
+dependencies = [
+  "numpy>=1.26,<3", "scipy>=1.11", "opencv-python-headless>=4.10,<5",
+  "pydantic>=2.7,<3", "PyYAML>=6", "matplotlib>=3.8"
+]
+
+[project.optional-dependencies]
+learning = ["torch>=2.2"]
+dev = ["pytest>=8", "ruff>=0.6", "mypy>=1.11", "types-PyYAML"]
+
+[project.scripts]
+robodata = "robodata.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true
+check_untyped_defs = true
+follow_imports = "skip"
+disable_error_code = ["import-untyped"]
