@@ -9,6 +9,7 @@ import cv2
 import numpy as np
 import yaml
 
+from .blender_geometry import surface_frame_identity
 from .config import RunConfig
 from .export import save_episode, write_json
 from .geometry import inverse, validate_transform
@@ -69,6 +70,12 @@ def assemble_rendered(render_root: Path | str, output_root: Path | str) -> Path:
         raise ValueError("Dataset output must be outside the raw render tree")
     metadata_path = root / "render_metadata.json"
     meta = json.loads(metadata_path.read_text(encoding="utf-8"))
+    face = meta.get("work_face", "top_flange")
+    if face not in {"top_flange", "web_front"}:
+        raise ValueError("Unknown rendered work face")
+    surface_frame_id = surface_frame_identity(meta)
+    if face == "web_front" and not meta.get("surface_frame_id"):
+        raise ValueError("Web render requires an explicit surface frame identity")
     camera = Camera(matrix=meta["camera_matrix"], width=meta["width"], height=meta["height"])
     frames = meta["frames"]
     expected = meta.get("expected_frames", meta.get("settings", {}).get("config", {}).get("frames"))
@@ -189,6 +196,7 @@ def assemble_rendered(render_root: Path | str, output_root: Path | str) -> Path:
         "depth_convention_input": convention,
         "depth_convention_output": "axial_z_meters",
         "geometry_source": "synthetic_proxy_not_measured_real_tool",
+        "work_face": face,
         "landmark_note": "oracle projected marker centers with ray-cast visibility, not a detector",
         "render_settings": {
             key: value
@@ -218,7 +226,7 @@ def assemble_rendered(render_root: Path | str, output_root: Path | str) -> Path:
             mode=mode,
             metric_scale_source="measured_geometry" if mode == "rgb" else "depth_sensor",
             camera_motion=meta["camera_motion"],
-            surface_frame_id="synthetic_hbeam_top_patch",
+            surface_frame_id=surface_frame_id,
             surface_method="pnp",
             tool={"points_m": meta["tool_points_m"]},
             surface={"points_m": meta["surface_points_m"]},
@@ -233,7 +241,7 @@ def assemble_rendered(render_root: Path | str, output_root: Path | str) -> Path:
     gt = Episode(
         episode_id=manifest.episode_id,
         task_name=manifest.task_name,
-        surface_frame_id="synthetic_hbeam_top_patch",
+        surface_frame_id=surface_frame_id,
         frames=truth,
         source=Source(
             mode="external_pose", metric_scale_source="calibrated_external", data_kind="synthetic"

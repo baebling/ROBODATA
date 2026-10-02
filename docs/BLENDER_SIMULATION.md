@@ -88,6 +88,46 @@ the estimator's 3x3 median create a systematic offset. This is retained, not
 corrected using GT. Near-zero RGB error is expected in this oracle setting.
 No real-data accuracy, sensor fidelity or process-quality claim is supported.
 
+## Web-Facing Follow-Up
+
+Use `configs/blender_web_simulation.json` instead of the preserved top-flange
+configuration. It defines 11 conditions with 12 frames at 10 FPS (132 frames):
+the original seven motion/camera conditions plus top-flange blockage, beam-end
+miss, away-pointing nozzle, and a front-view occlusion control. Beam dimensions,
+camera placement and speed are illustrative configuration values, not measurements
+of the real equipment or validated fireproofing settings.
+
+The selected `web_front` face is the near web face at world Y = -web_thickness/2.
+Its persistent origin is the physical face center, world Z = beam_top_height -
+beam_height/2. Surface +X is world +X (beam length); +Y is world +Z (up); +Z is
+world -Y (outward toward the worker). This is right-handed. The canonical
+surface_frame_id is `synthetic_hbeam_web_front`, distinct from the top-flange pilot.
+The camera is aimed at the web, with an oblique worker-view proxy and a separate
+near-frontal control; it is not a calibrated helmet camera simulation.
+
+`nozzle_relationship.json` is a separate diagnostic, not a replacement dataset
+schema or a physical spray model. It records the nozzle-axis intersection with
+the infinite selected plane, whether that point is on the finite work face,
+the first beam solid hit, and statuses `work_face_hit`, `flange_blocked`, `miss`,
+`away`, or `parallel`. The existing projected path is still orthogonal projection;
+it must not be interpreted as an oblique nozzle ray or a spray footprint.
+
+The renderer independently verifies analytic ray intersections with actual
+Blender mesh rays. This check ignores the illustrative tool and calibration
+markers, testing only the three beam solids. GT ray records are never included
+in the inference manifest. Estimated diagnostics are computed after extraction
+from estimated functional points/axes and the configured known beam dimensions.
+They therefore do not test unknown-beam reconstruction or flange perception.
+Unknown poses produce null diagnostics; classification accuracy is reported
+alongside its evaluated-frame count, never as a claim about all frames.
+
+The preview overlays surface axes, GT nozzle rays in yellow and valid RGB
+estimated rays in magenta, with GT gap/angle/status labelled. The raw renders
+remain unchanged. Geometry-valid frames may still point away or hit a flange.
+Occluded landmarks remain invalid even in oracle annotation mode. In particular,
+the direct RGB-D landmark method requires visibility of the functional tip and
+axis endpoints; additional depth does not recover a hidden nozzle automatically.
+
 The stationary control reports predicted positional span without fitting or
 aligning the trajectory to GT. Unknown process states and primitives remain
 null. Reproducibility records include source commit/dirty state from the normal

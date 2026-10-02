@@ -12,6 +12,13 @@ import bpy
 from bpy_extras.object_utils import world_to_camera_view
 from mathutils import Euler, Matrix, Vector
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+from robodata.blender_geometry import (  # noqa: E402
+    nozzle_relation,
+    surface_frame_identity,
+    work_surface_transform,
+)
+
 
 def material(name, color, metallic=0.0):
     mat = bpy.data.materials.new(name)
@@ -62,6 +69,9 @@ def file_output(group, directory, name, image_format, color_depth, socket):
 
 
 def setup_scene(cfg, scenario):
+    surface_transform = work_surface_transform(cfg)
+    surface_frame_identity(cfg)
+    face = cfg.get("work_face", "top_flange")
     scene = bpy.data.scenes.new("ROBODATA_" + scenario["name"])
     bpy.context.window.scene = scene
     scene.unit_settings.system = "METRIC"
@@ -108,7 +118,7 @@ def setup_scene(cfg, scenario):
         (0, 0, height - ft / 2),
         size=(length, width, ft),
         mat=mats["metal"],
-        index=3,
+        index=3 if face == "top_flange" else 1,
     )
     mesh_object(
         "HBeam_Web",
@@ -116,7 +126,7 @@ def setup_scene(cfg, scenario):
         (0, 0, height - bh / 2),
         size=(length, cfg["web_thickness_m"], bh - 2 * ft),
         mat=mats["metal"],
-        index=1,
+        index=3 if face == "web_front" else 1,
     )
     mesh_object(
         "HBeam_Bottom",
@@ -173,7 +183,7 @@ def setup_scene(cfg, scenario):
             index=2,
         )
         tool_markers[name] = obj
-    S = Matrix.Translation((0, 0, height))
+    S = Matrix(surface_transform.tolist())
     for j, (name, point) in enumerate(cfg["surface_points_m"].items()):
         obj = mesh_object(
             "SurfaceMarker_" + name,
@@ -236,8 +246,16 @@ def set_pose(cfg, scenario, tool, camera, S, i):
     if path == "stationary":
         pose = Euler((math.pi, 0, 0), "XYZ").to_matrix().to_4x4()
     pose.translation = Vector((x, y, cfg["standoff_m"]))
+    if "nozzle_axis_surface" in scenario:
+        axis = Vector(scenario["nozzle_axis_surface"])
+        if abs(axis.length - 1) > 1e-6:
+            raise ValueError("Scenario nozzle axis must be unit length")
+        pose = Vector((0, 0, 1)).rotation_difference(axis).to_matrix().to_4x4()
+        pose.translation = Vector((x, y, cfg["standoff_m"]))
+    if "nozzle_position_surface_m" in scenario:
+        pose.translation = Vector(scenario["nozzle_position_surface_m"])
     tool.matrix_world = S @ pose
-    position = Vector(cfg["camera_position_surface_m"])
+    position = Vector(scenario.get("camera_position_surface_m", cfg["camera_position_surface_m"]))
     if scenario["camera_motion"] == "moving":
         amplitude = cfg["camera_motion_amplitude_m"]
         position += Vector((amplitude * math.sin(2 * math.pi * u), amplitude * (2 * u - 1), 0))
@@ -291,6 +309,47 @@ def depth_checks(scene, camera, cfg):
     return checks
 
 
+def nozzle_reference(scene, cfg, tool, S):
+    pose = S.inverted() @ tool.matrix_world
+    point = pose.translation
+    axis = pose.to_3x3() @ Vector((0, 0, 1))
+    relation = nozzle_relation(cfg, list(point), list(axis))
+    origin = tool.matrix_world.translation
+    direction = tool.matrix_world.to_3x3() @ Vector((0, 0, 1))
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+    hit_part, hit_point, distance = None, None, None
+    cursor = origin.copy()
+    # Ignore proxy/marker geometry; independently check only actual beam solids.
+    for _ in range(64):
+        hit = scene.ray_cast(depsgraph, cursor, direction, distance=10)
+        if not hit[0]:
+            break
+        for prefix, part in [
+            ("HBeam_Top", "top_flange"),
+            ("HBeam_Web", "web"),
+            ("HBeam_Bottom", "bottom_flange"),
+        ]:
+            if hit[4].name.startswith(prefix):
+                hit_part, hit_point = part, S.inverted() @ hit[1]
+                distance = (hit[1] - origin).length
+                break
+        if hit_part is not None:
+            break
+        cursor = hit[1] + direction * 1e-5
+    agrees = hit_part == relation["first_beam_part"]
+    if distance is not None:
+        agrees = agrees and abs(distance - relation["ray_distance_m"]) < 1e-5
+    relation.update(
+        scene_ray_first_beam_part=hit_part,
+        scene_ray_hit_surface_m=None if hit_point is None else list(hit_point),
+        scene_ray_distance_m=distance,
+        scene_ray_agrees=agrees,
+    )
+    if not agrees:
+        raise ValueError("Analytic nozzle ray disagrees with actual Blender beam geometry")
+    return relation
+
+
 def render_scenario(cfg, scenario, root, config_hash, render_provenance):
     folder = root / scenario["name"]
     folder.mkdir()
@@ -314,6 +373,7 @@ def render_scenario(cfg, scenario, root, config_hash, render_provenance):
             "tool_keypoints": keypoints(scene, camera, tm),
             "surface_keypoints": keypoints(scene, camera, sm),
             "depth_checks": depth_checks(scene, camera, cfg),
+            "nozzle_reference": nozzle_reference(scene, cfg, tool, S),
         }
         bpy.ops.render.render(write_still=True)
         depth_files = list(frame_dir.glob("depth*.exr"))
@@ -354,6 +414,8 @@ def render_scenario(cfg, scenario, root, config_hash, render_provenance):
         "seed": cfg["seed"],
         "camera_matrix": [[f, 0, (w - 1) / 2], [0, f, (h - 1) / 2], [0, 0, 1]],
         "camera_motion": scenario["camera_motion"],
+        "work_face": cfg.get("work_face", "top_flange"),
+        "surface_frame_id": surface_frame_identity(cfg),
         "depth_convention": "axial_z",
         "tool_points_m": cfg["tool_points_m"],
         "surface_points_m": cfg["surface_points_m"],

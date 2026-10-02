@@ -41,6 +41,11 @@ See [Blender experiment](docs/BLENDER_SIMULATION.md) for the rendering command,
 coordinate conventions and limitations. This is a geometry integration test,
 not a learned detector, real spraying, or an unknown-scale RGB-only benchmark.
 
+The approved follow-up uses `configs/blender_web_simulation.json`: a persistent
+web-facing frame, 11 motion/edge/occlusion conditions, and separate finite-beam
+nozzle-ray diagnostics. Preview overlays distinguish GT rays from estimated RGB
+rays. Nozzle occlusion remains an estimation failure, not a fabricated pose.
+
 ## Train RGB Perception
 
 Install a platform-appropriate PyTorch build, or `pip install -e '.[learning]'`.

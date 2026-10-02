@@ -113,3 +113,52 @@ used to identify and repair the data-integrity checks.
 Conflicting per-episode and parent-configuration frame counts are rejected
 before writing. The full 7-case import/extraction/evaluation was rerun after
 the final validation changes and completed successfully.
+
+## Web-Facing Follow-Up (2026-10-02)
+
+The researcher approved switching the spraying example from the top flange to
+the near web face. `configs/blender_web_simulation.json` renders 11 conditions,
+12 frames at 10 FPS each, 1280x720, 16 Cycles samples, seed 42. All 132 frames
+include RGB, axial depth, renderer labels and actual simulator transforms.
+The web frame remains fixed: face center, +X beam length, +Y up, +Z outward.
+The native Blender window opened `fixed_zigzag/hbeam_spray.blend`; animation
+was verified at frames 1 and 6, then paused. No original/raw scene was overwritten.
+
+Finite nozzle-axis/beam intersections agree with actual Blender mesh rays in
+every rendered frame. GT includes 96 work-face hits, 12 top-flange blockages,
+12 beam-end misses and 12 away-pointing rays. Reference ray labels/poses are
+separate from inference; estimated relations use estimated points/axes and known
+configured beam dimensions, not unknown geometry reconstructed from video.
+
+RGB produced 41/132 valid states; RGB-D produced 12/132, all in the away control.
+In the original seven target-facing movement/control conditions, RGB coverage
+was only 5/84, RGB-D 0/84. The additional frontal control was invalid 12/12 in
+both modes, so all target-facing web-hit conditions total RGB 5/96, RGB-D 0/96.
+Every valid estimated ray status matched its reference, but unknown frames are
+NOT successes. The moving-stationary control had no valid states; no invariance
+claim is supported by this new view. Occlusion of functional/tool landmarks is
+the main limitation, not demonstrated automatic perception performance.
+
+The flange, miss and away controls have 12/12 valid RGB estimates each.
+Away-control RGB-D position RMSE is 6.627442 mm, axis MAE 0.119826 degrees,
+retaining the sphere-center versus sampled-depth offset. Oracle RGB residuals
+are numerical geometry checks, never trained-detector or real-data accuracy.
+
+Raw data: `outputs/blender_web_20261002_01`; final full evaluation and labelled
+132-frame GIF: `outputs/blender_web_results_20261002_02`. The existing 210-frame
+top-flange pilot also re-evaluated successfully in
+`outputs/blender_legacy_compat_20261002_01` with both modes valid 30/30 per case.
+Previous reports and inputs are preserved. A fresh current-renderer four-frame
+run in `outputs/blender_web_source_smoke_20261002_01` and its separate evaluated
+results verify the post-review renderer, rather than rewriting the full-run
+provenance. The full run predates contact-edge fixes/formatting; each run retains
+its actual renderer hash, parent commit c1126e9 and dirty=true.
+
+Fresh checks: 91 pytest tests passed with PyTorch available. The 45 focused
+Blender boundary/geometry tests cover web/top identity separation, handedness,
+oblique versus orthogonal intersections, both flanges, miss/away/parallel,
+invalid axes/dimensions, GT separation, unknown preservation and visible no-hit
+estimated rays in a separate preview label band. Six actual Blender geometry
+checks pass, including the reviewer-reported 5-micrometer standoff regression
+which failed before the origin-offset fix. Format/lint and mypy are checked
+separately before commit; independent read-only code review was used.
