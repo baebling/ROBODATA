@@ -49,6 +49,11 @@ def main(argv=None):
     reference.add_argument("--csv", type=Path, required=True)
     reference.add_argument("--calibration", type=Path, required=True)
     reference.add_argument("--output", type=Path, required=True)
+    blender = sub.add_parser(
+        "blender-evaluate", help="Import and evaluate synthetic Blender renders"
+    )
+    blender.add_argument("--render-root", type=Path, required=True)
+    blender.add_argument("--output", type=Path, required=True)
     args = parser.parse_args(argv)
     try:
         if args.command == "demo":
@@ -126,6 +131,10 @@ def main(argv=None):
             from .reference import import_reference
 
             import_reference(args.csv, args.calibration, args.output)
+        elif args.command == "blender-evaluate":
+            from .blender_experiment import run_blender_experiment
+
+            print(run_blender_experiment(args.render_root, args.output))
     except (ValueError, FileNotFoundError, FileExistsError) as exc:
         parser.exit(2, f"robodata: {exc}\n")
 

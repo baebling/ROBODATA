@@ -26,6 +26,21 @@ The demo renders a 40-frame RGB video and depth, extracts both pipelines, saves
 JSON/NPZ, compares against analytic truth, and creates trajectory/overlay figures.
 One frame is deliberately occluded. Choose a new output folder for each run.
 
+## Blender Simulation
+
+Blender 5.2 renders an H-beam and a calibrated proxy spray tool without add-ons.
+Seven fixed/moving-camera conditions export RGB, float EXR axial depth,
+object-index masks, oracle 2D landmarks and separate simulator-transform truth.
+The existing RGB/RGB-D pipelines produce errors, failure counts and previews:
+
+```sh
+.venv/bin/robodata blender-evaluate --render-root outputs/blender_renders --output outputs/blender_results
+```
+
+See [Blender experiment](docs/BLENDER_SIMULATION.md) for the rendering command,
+coordinate conventions and limitations. This is a geometry integration test,
+not a learned detector, real spraying, or an unknown-scale RGB-only benchmark.
+
 ## Train RGB Perception
 
 Install a platform-appropriate PyTorch build, or `pip install -e '.[learning]'`.

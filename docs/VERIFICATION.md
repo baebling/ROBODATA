@@ -70,3 +70,46 @@ reconstruction, confidence calibration, DITTO-style correspondence warping,
 real gold measurements and robot execution are not verified or implemented.
 Known-geometry RGB is a disclosed baseline assumption. Task selection and the
 functional frame definition for each real tool still need researcher review.
+
+## Blender Pilot (Additional Run)
+
+Blender 5.2.2 LTS rendered 7 x 30 frames with Cycles GPU: horizontal, vertical,
+zigzag with fixed/moving cameras, and stationary-tool moving-camera control.
+All 210 RGB frames have float32 axial depth and object labels. Depth samples
+were checked against independent scene ray intersections before import.
+Both existing pipelines ran on all 7 cases, with 30/30 valid states and 24
+matched 0.2-second action targets per case/mode. No trajectory fitting was used.
+
+RGB oracle position RMSE ranged from 0.000771 to 0.000874 mm. These numerical
+geometry residuals are not detector accuracy. RGB-D rendered-depth position
+RMSE ranged from 6.522 to 6.621 mm; semantic sphere-center annotations and
+surface depth samples differ systematically. Both modes used surface PnP;
+unknown-surface reconstruction is not tested. In the stationary control,
+predicted span was 0.002715 mm (RGB) and 0.633607 mm (RGB-D).
+
+Outputs: `outputs/blender_hbeam_20261002_01` (raw renders/scenes),
+`outputs/blender_hbeam_results_20261002_02` (final episodes, reports and 210-frame GIF).
+The native Blender window opened the saved fixed-horizontal scene; animation
+was visually verified at different frames. The original open scene was saved
+separately as `outputs/blender_original_before_simulation_20261002_01.blend`.
+No add-ons were installed and no raw files were overwritten.
+
+This initial 210-frame pilot started before renderer-source snapshot support
+was added. Its missing render-time source hash/Git state is disclosed in the
+report; evaluation provenance is not substituted for it. A fresh 4-frame
+stationary/moving-camera smoke run in `outputs/blender_provenance_smoke_20261002_02`
+verified the latest renderer hash (matching source bytes), effective config,
+render-time commit `d85d257f7d5ce16e633a3bad1ea4e11cadaa999c` and dirty=true.
+The selected-scenario parent directory evaluated successfully. This verifies
+future provenance capture, not retroactive provenance for the full pilot.
+
+Fresh checks after the extension: format covers 29 source/test/script files;
+lint passes; mypy passes 20 source files; full tests pass 68/68 with PyTorch.
+22 Blender-boundary tests cover axes, declared depth conventions, invalid
+samples, truncation, static-surface reanchoring, invalid ray checks, timestamp
+ordering, raw-tree protection, GT/generative-motion separation and stationary
+tool recovery with a moving camera. A read-only independent code review was
+used to identify and repair the data-integrity checks.
+Conflicting per-episode and parent-configuration frame counts are rejected
+before writing. The full 7-case import/extraction/evaluation was rerun after
+the final validation changes and completed successfully.
