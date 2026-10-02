@@ -74,3 +74,6 @@ Independent tracker CSV poses require surveyed/calibrated transforms and clock
 offset. A LiDAR surface survey may supply calibration, but there is no
 vendor-specific LiDAR or mocap acquisition driver. Inference never consumes
 ground-truth poses or calibrates itself by fitting the test GT trajectory.
+Original tracker indices or verified sampling cadence preserve acquisition gaps.
+Externally supplied occlusion constraints survive detector inference and remain
+distinguishable from learned keypoint visibility predictions.

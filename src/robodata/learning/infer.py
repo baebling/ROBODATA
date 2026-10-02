@@ -68,6 +68,7 @@ def infer_manifest(checkpoint_path, manifest_path, output_path, min_confidence=0
         for group in ["tool", "surface"]:
             old = getattr(f, group)
             new = detections[group]
+            new.occluded = old.occluded
             if old.mask_path:
                 new.mask_path = str((path.parent / old.mask_path).resolve())
             setattr(f, group, new)
@@ -76,12 +77,14 @@ def infer_manifest(checkpoint_path, manifest_path, output_path, min_confidence=0
         observations.append(f)
     manifest.video_path = str((path.parent / manifest.video_path).resolve())
     manifest.observations = observations
+    constraint_source = manifest.landmark_source
     manifest.landmark_source = "rgb_landmark_network_uncalibrated_scores"
     manifest.provenance["detector"] = {
         "checkpoint": str(Path(checkpoint_path).resolve()),
         "checkpoint_sha256": hashlib.sha256(Path(checkpoint_path).read_bytes()).hexdigest(),
         "training": detector.provenance,
         "min_confidence": min_confidence,
+        "occlusion_constraint_source": constraint_source,
     }
     write_json(out, manifest.model_dump(mode="json"))
     write_json(

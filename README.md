@@ -75,6 +75,8 @@ external research inputs. Their sources are retained with every frame.
 converts independent marker poses into the same physical surface/tool frame.
 See [Data Schema](docs/DATA_SCHEMA.md) for required transforms and clock offset.
 `configs/gt_calibration.yaml` is a calibration template, not a measured reference.
+Tracker CSV must keep original `frame_index`, or calibration must specify the
+verified `sample_period_sec`, so acquisition gaps block motion labels.
 Keep raw videos/measurements under `data/raw/` or external storage; they are ignored by Git.
 
 ## Research and Checks

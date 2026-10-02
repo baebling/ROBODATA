@@ -1,6 +1,8 @@
 """Independent-reference errors without fitting away prediction error."""
 
 import numpy as np
+from scipy.sparse import csr_matrix
+from scipy.sparse.csgraph import min_weight_full_bipartite_matching
 from scipy.spatial.transform import Rotation
 
 from .schema import Episode
@@ -13,6 +15,30 @@ def _stats(values, rmse=False):
     return float(np.sqrt(np.mean(x * x)) if rmse else np.mean(x))
 
 
+def _match_timestamps(pred_times, gt_times, tolerance_sec) -> list[tuple[int, int]]:
+    n, m = len(pred_times), len(gt_times)
+    rows, columns, costs = [], [], []
+    for i, timestamp in enumerate(pred_times):
+        lo = int(np.searchsorted(gt_times, timestamp - tolerance_sec, side="left"))
+        hi = int(np.searchsorted(gt_times, timestamp + tolerance_sec, side="right"))
+        for j in range(lo, hi):
+            distance = abs(timestamp - gt_times[j])
+            if distance <= tolerance_sec:
+                rows.append(i)
+                columns.append(j)
+                costs.append((distance / tolerance_sec if tolerance_sec else 0) + 1e-12)
+        rows.append(i)
+        columns.append(m + i)
+        costs.append(float(min(n, m) + 1))
+    # Private dummy columns make every row assignable. Their penalty prioritizes
+    # match count, then timestamp distance, without a dense video-by-tracker matrix.
+    graph = csr_matrix((costs, (rows, columns)), shape=(n, m + n))
+    assigned_rows, assigned_columns = min_weight_full_bipartite_matching(graph)
+    pairs = [(int(i), int(j)) for i, j in zip(assigned_rows, assigned_columns) if j < m]
+    # Ordered times with a common tolerance allow uncrossing equal-cost ties.
+    return list(zip(sorted(i for i, _ in pairs), sorted(j for _, j in pairs)))
+
+
 def evaluate(pred: Episode, gt: Episode, tolerance_sec=0.02) -> dict:
     if not np.isfinite(tolerance_sec) or tolerance_sec < 0:
         raise ValueError("Timestamp tolerance must be finite and nonnegative")
@@ -21,7 +47,7 @@ def evaluate(pred: Episode, gt: Episode, tolerance_sec=0.02) -> dict:
     if pred.task_name != gt.task_name:
         raise ValueError("Evaluation task mismatch")
     times = np.array([f.timestamp_sec for f in gt.frames])
-    used = set()
+    pred_times = np.array([f.timestamp_sec for f in pred.frames])
     position: list[float] = []
     axis: list[float] = []
     rotation: list[float] = []
@@ -29,12 +55,9 @@ def evaluate(pred: Episode, gt: Episode, tolerance_sec=0.02) -> dict:
     incidence: list[float] = []
     action_position: list[float] = []
     matched, valid, action_matched = 0, 0, 0
-    for p in pred.frames:
-        j = int(np.argmin(abs(times - p.timestamp_sec)))
-        if abs(times[j] - p.timestamp_sec) > tolerance_sec or j in used:
-            continue
-        used.add(j)
+    for i, j in _match_timestamps(pred_times, times, tolerance_sec):
         matched += 1
+        p = pred.frames[i]
         g = gt.frames[j]
         if not p.quality.valid or not g.quality.valid:
             continue
@@ -97,5 +120,6 @@ def evaluate(pred: Episode, gt: Episode, tolerance_sec=0.02) -> dict:
         "matched_actions": action_matched,
         "action_delta_position_rmse_m": _stats(action_position, True),
         "timestamp_tolerance_sec": tolerance_sec,
+        "timestamp_matching": "max_cardinality_min_time_error_ordered_one_to_one",
         "alignment": "explicit_same_surface_frame_no_trajectory_fitting",
     }

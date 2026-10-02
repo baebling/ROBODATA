@@ -8,8 +8,8 @@ validation. No real footage or calibrated real gold benchmark was available.
 - Format: `ruff format --check src tests`, 25 files already formatted.
 - Lint: `ruff check src tests`, no errors.
 - Types: `mypy --config-file pyproject.toml src/robodata`, 18 source files pass.
-- Full tests with PyTorch: 37 passed, including detector train/reload/inference.
-- Fresh isolated core install: 33 passed, 1 learning module skipped without
+- Full tests with PyTorch: 46 passed, including detector train/reload/inference.
+- Fresh isolated core install: 41 passed, 1 learning module skipped without
   PyTorch. `pip check` reports no broken requirements; both demo pipelines run.
 - JSON Schema generated at `docs/episode.schema.json`.
 - Trajectory comparison and RGB pose overlays visually inspected: nonblank,
@@ -48,6 +48,8 @@ The saved best-loss checkpoint was reloaded and inference run on the rendered
 MJPG video. Both detector and geometry thresholds were 0.5 for landmark scores;
 PnP maximum reprojection error was 4 pixels. No test-trajectory fitting,
 interpolation or smoothing was used.
+The input's explicit occlusion flag is preserved as a hard validity constraint;
+this is not an automatic occlusion-detection benchmark.
 
 Across the whole 40-frame episode (including training frames), 39 valid poses
 had position RMSE 0.051405 m, axis MAE 0.110056 rad, full-rotation MAE
@@ -56,7 +58,7 @@ not held-out real-data or independent-scene generalization results. Small
 2D landmark errors still produced substantial depth/orientation error. More
 real data, geometric observability analysis and detector validation are needed.
 
-Local outputs are `outputs/learned_rgb_final/episode.json`, `evaluation.json`,
+Local outputs are `outputs/learned_rgb_reviewed/episode.json`, `evaluation.json`,
 `comparison.png`, `tensors.npz`, and overlays. The checkpoint is
 `outputs/demo/landmarks80.pt`; weights and generated data are intentionally
 not committed. Recreate them using the README commands and a new output path.

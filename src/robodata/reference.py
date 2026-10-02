@@ -26,6 +26,8 @@ class Calibration(Contract):
     time_offset_sec: float = 0
     horizon_sec: float = Field(default=0.2, gt=0)
     timestamp_tolerance_sec: float = Field(default=0.04, ge=0)
+    sample_period_sec: float | None = Field(default=None, gt=0)
+    sample_time_tolerance_sec: float = Field(default=0.001, ge=0)
 
     @field_validator("T_surface_tracking", "T_marker_tool")
     @classmethod
@@ -44,19 +46,33 @@ def import_reference(csv_path, calibration_path, output_path) -> Episode:
         required = ["timestamp_sec", "x_m", "y_m", "z_m", "qx", "qy", "qz", "qw"]
         if reader.fieldnames is None or not set(required) <= set(reader.fieldnames):
             raise ValueError("Reference CSV needs metric position and xyzw quaternion columns")
-        for i, row in enumerate(reader):
+        indexed = "frame_index" in reader.fieldnames
+        if not indexed and cfg.sample_period_sec is None:
+            raise ValueError("GT requires original frame_index or calibrated sample_period_sec")
+        first_time = None
+        for row in reader:
             values = np.array([float(row[k]) for k in required])
             if not np.isfinite(values).all():
                 raise ValueError("Nonfinite reference measurement")
             if not np.isclose(np.linalg.norm(values[4:8]), 1, atol=0.01):
                 raise ValueError("Reference quaternion must be normalized")
+            if first_time is None:
+                first_time = float(values[0])
+            if indexed:
+                index = int(row["frame_index"])
+            else:
+                assert cfg.sample_period_sec is not None
+                elapsed = float(values[0] - first_time)
+                index = round(elapsed / cfg.sample_period_sec)
+                if abs(elapsed - index * cfg.sample_period_sec) > cfg.sample_time_tolerance_sec:
+                    raise ValueError("GT timestamp is outside the calibrated sampling grid")
             G_M = np.eye(4)
             G_M[:3, :3] = Rotation.from_quat(values[4:8]).as_matrix()
             G_M[:3, 3] = values[1:4]
             ST = np.array(cfg.T_surface_tracking) @ G_M @ np.array(cfg.T_marker_tool)
             frames.append(
                 FrameRecord(
-                    frame_index=i,
+                    frame_index=index,
                     timestamp_sec=float(values[0] + cfg.time_offset_sec),
                     canonical=Canonical(
                         T_surface_tool=ST.tolist(),
@@ -77,6 +93,7 @@ def import_reference(csv_path, calibration_path, output_path) -> Episode:
             "instrument": cfg.instrument,
             "calibration": cfg.model_dump(),
             "measurement_sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+            "frame_index_source": "original_csv" if indexed else "calibrated_sampling_grid",
         }
     )
     episode = Episode(

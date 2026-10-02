@@ -9,6 +9,8 @@ torch = pytest.importorskip("torch")
 from robodata.learning.infer import RGBDetector, infer_manifest  # noqa: E402
 from robodata.learning.model import LandmarkNet, heatmap_loss, heatmap_targets  # noqa: E402
 from robodata.learning.train import train  # noqa: E402
+from robodata.observations import Manifest  # noqa: E402
+from robodata.pipeline import run_episode  # noqa: E402
 from robodata.synthetic import create_demo  # noqa: E402
 
 
@@ -65,3 +67,31 @@ def test_training_validation_leakage_is_rejected(tmp_path):
     config_path.write_text(yaml.safe_dump(config))
     with pytest.raises(ValueError, match="leakage"):
         train(config_path, tmp_path / "detector.pt")
+
+
+def test_inference_preserves_hard_occlusion_constraints(tmp_path, monkeypatch):
+    inputs = create_demo(tmp_path / "inputs", frames=6, occluded=[3])
+    original = Manifest.model_validate_json((inputs / "manifest.json").read_text())
+
+    class ConfidentDetector:
+        provenance = {"test": "confident_fixture_predictions"}
+
+        def __init__(self, *args):
+            pass
+
+        def predict(self, rgb):
+            first = original.observations[0]
+            return {
+                "tool": first.tool.model_copy(deep=True),
+                "surface": first.surface.model_copy(deep=True),
+            }
+
+    monkeypatch.setattr("robodata.learning.infer.RGBDetector", ConfidentDetector)
+    checkpoint = tmp_path / "fixture.pt"
+    checkpoint.write_bytes(b"fixture")
+    output = infer_manifest(checkpoint, inputs / "manifest.json", tmp_path / "inferred.json")
+    predicted = Manifest.model_validate_json(output.read_text())
+    assert predicted.observations[3].tool.occluded
+    result = run_episode(inputs / "rgb.yaml", tmp_path / "run", output)
+    assert not result.frames[3].quality.valid
+    assert not result.frames[2].action.valid

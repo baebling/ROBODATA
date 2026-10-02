@@ -46,7 +46,10 @@ Nx6 [point(3), direction(3)]. Invalid entries are zeros and must be ignored usin
 state_valid/action_valid/axis_valid. Use `np.load(..., allow_pickle=False)`.
 
 Reference CSV requires timestamp_sec,x_m,y_m,z_m,qx,qy,qz,qw in the tracking
-frame. A calibration YAML supplies T_surface_tracking, T_marker_tool,
+frame and original integer frame_index, preserving acquisition gaps. If original
+indices are unavailable, calibration must supply a verified sample_period_sec;
+indices are reconstructed on that grid within sample_time_tolerance_sec. Missing
+slots are not renumbered away. A calibration YAML supplies T_surface_tracking, T_marker_tool,
 time_offset_sec (added to reference time), instrument and surface_frame_id.
 T_surface_tool = T_surface_tracking @ T_tracking_marker @ T_marker_tool.
 Never obtain reference calibration by fitting the estimated test trajectory.
@@ -55,4 +58,5 @@ rejected. Vendor validity/occlusion exports need an explicit adapter rather than
 silently replacing missing measurements with zero poses.
 
 Neural landmark manifests retain the checkpoint SHA-256, training provenance
-and score threshold. Extraction propagates this provenance to the episode.
+and score threshold. Supplied occlusion flags remain hard validity constraints;
+their original source is recorded. Extraction propagates this provenance to the episode.

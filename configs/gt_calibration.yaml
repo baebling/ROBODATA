@@ -17,3 +17,7 @@ T_marker_tool:
 time_offset_sec: 0.0
 horizon_sec: 0.2
 timestamp_tolerance_sec: 0.04
+# Retain original frame_index in CSV. If unavailable, set a verified
+# sample_period_sec, for example 0.01 only for an actual 100Hz device.
+sample_period_sec: null
+sample_time_tolerance_sec: 0.001
