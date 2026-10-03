@@ -52,6 +52,18 @@ DITTO runtime, metric depth and bootstrap object masks. It does not yet estimate
 the initial nozzle frame or remove helmet-camera motion. ToolEENet's published
 input requirements and checkpoint/category limitations are documented alongside it.
 
+## Construction Research Positioning
+
+The selected physical tool is Graco TexSpray G-TEX gravity-fed hopper gun,
+25D497, for H-beam web spraying. The existing Blender tool remains a generic
+proxy. [Research positioning](docs/RESEARCH_POSITIONING.md) compares DITTO,
+EgoScaler/VLA, ORION and construction spraying research without claiming that
+RGB-only extraction or task-relative tool frames are new.
+The [G-TEX experiment protocol](docs/HOPPER_GUN_EXPERIMENT.md) separates physical
+geometry, projected occupancy and tool-caused surface occlusion, with independent
+GT and accuracy/coverage reporting. This is a proposed study, not measured
+G-TEX performance or an implemented occlusion benchmark.
+
 ## Train RGB Perception
 
 Install a platform-appropriate PyTorch build, or `pip install -e '.[learning]'`.

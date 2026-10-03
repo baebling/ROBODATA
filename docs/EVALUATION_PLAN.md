@@ -20,6 +20,29 @@
    coverage. Add segmentation/keypoint error, annotation time, failure rate and
    confidence reliability when real labels are available.
 
+## Construction geometry and occlusion study
+
+First hardware is G-TEX 25D497 on the H-beam web. Follow the proposed
+[hopper-gun protocol](HOPPER_GUN_EXPERIMENT.md) and
+[reference comparison](RESEARCH_POSITIONING.md) before collecting a benchmark.
+Separate physical geometry, projected occupancy, nozzle visibility, tool-caused
+web occlusion and other occluders. Use the same physical surface ROI and declare
+how hidden area is measured. Keep GT/oracle masks out of automatic inference.
+Existing synthetic proxies do not model the measured G-TEX.
+
+Compare matched RGB frames with/without aligned depth; smartphone versus ZED
+views are a separate camera-domain experiment. Include a calibrated object-body
+baseline with the same body-to-nozzle prior. Test joint tool/surface validity
+ablations using error/coverage curves and calibration-split thresholds.
+
+Report full-pose, axis-only and temporal-label coverage, contiguous durations,
+gaps, reacquisition delay and GT matching coverage alongside errors. Aggregate
+uncertainty by independent episode/group and preserve failed frames. Ray-hit/
+flange/miss diagnostics do not establish deposition or quality. New benchmark
+annotations/metrics remain proposed, not implemented CLI outputs.
+
+## Current implementation and evidence
+
 The included CLI implements calibrated reference import, point/axis/rotation and
 temporal displacement evaluation. Automatic force, pressure, flow, material
 quality and process ON/OFF inference have not been validated or implemented.

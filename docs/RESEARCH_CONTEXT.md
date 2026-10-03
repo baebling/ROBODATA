@@ -8,8 +8,10 @@ commands or robot joint commands.
 
 RGB is the final target. RGB-D provides an initial feasibility reference and
 sensor-depth comparison. Helmet viewpoint is a candidate collection setting.
-Representative work, dataset size and actual sensor availability remain open.
-The executable example is an explicitly synthetic planar spray proxy.
+The researcher selected Graco TexSpray G-TEX gravity-fed hopper gun (25D497)
+for spraying on the H-beam web. Measured geometry, installed nozzle,
+material/procedure, dataset size and synchronized sensor setup remain open.
+Executable examples use synthetic proxies, not a measured G-TEX model.
 
 Context consulted: the researcher's messages in this Codex conversation and
 BAE_ROBOT's `선행연구 조사 계획` (conversation
@@ -27,3 +29,11 @@ The expected contribution is a tested data-generation method with surface/tool
 geometry, temporal targets and explicit reliability. Model selection itself is
 not established as the academic novelty. Real data and independent evaluation
 are required before making claims about accuracy or generalization.
+
+[Research positioning](RESEARCH_POSITIONING.md) compares DITTO, EgoScaler and its
+VLA follow-up, ORION, Tool-as-Interface and construction spraying references.
+The candidate distinction is continuous functional nozzle/surface supervision
+with a geometry/occlusion-aware error-and-coverage benchmark, not RGB-only video,
+tool-centric frames or trajectory warping alone. Tool geometry, image occupancy
+and tool-caused surface occlusion are separate experimental variables. Their
+effects are hypotheses, not measured conclusions.
