@@ -14,7 +14,12 @@ class Contract(BaseModel):
 
 class Source(Contract):
     mode: Literal["rgb", "rgbd", "external_pose"]
-    metric_scale_source: Literal["measured_geometry", "depth_sensor", "calibrated_external"]
+    metric_scale_source: Literal[
+        "measured_geometry",
+        "depth_sensor",
+        "calibrated_external",
+        "mixed_depth_and_hand_calibration",
+    ]
     data_kind: Literal["real", "synthetic"]
     manifest_path: str | None = None
     rgb_video_path: str | None = None
@@ -30,6 +35,8 @@ class Estimate(Contract):
     origin_camera_m: list[float] | None = Field(default=None, min_length=3, max_length=3)
     axis_camera: list[float] | None = Field(default=None, min_length=3, max_length=3)
     frame_method: str | None = None
+    metric_scale_source: str | None = None
+    calibration_source: str | None = None
 
     @field_validator("T_camera_frame")
     @classmethod

@@ -1,0 +1,74 @@
+{
+  "base_config": "blender_hopper_simulation.json",
+  "geometry_note": "Unmeasured tool and virtual worker. Nominal manufacturer FoV, not calibrated hardware. No sensor noise, polarization or ToF/stereo reconstruction is simulated.",
+  "surface_height_m": 1.65,
+  "frames": 8,
+  "fps": 10,
+  "samples": 12,
+  "path_half_length_m": 0.12,
+  "helmet_mount": {
+    "forward_offset_m": 0.06, "up_offset_m": 0.04, "bob_m": 0.01,
+    "yaw_amplitude_deg": 2, "pitch_amplitude_deg": 1.5
+  },
+  "sensor_profiles": {
+    "galaxy_main": {
+      "name": "Galaxy Z TriFold main 1x, assumed diagonal interpretation of published FoV",
+      "width": 960, "height": 540, "diagonal_fov_deg": 85,
+      "depth_available": false, "capture_resolution": [1920, 1080], "capture_fps": 30,
+      "intrinsics_source": "nominal_assumption_needs_video_calibration",
+      "source_url": "https://samsungmobilepress.com/press-releases/introducing-galaxy-z-trifold-the-shape-of-whats-next-in-mobile-innovation/"
+    },
+    "galaxy_ultrawide": {
+      "name": "Galaxy Z TriFold ultrawide, assumed diagonal interpretation of published FoV",
+      "width": 960, "height": 540, "diagonal_fov_deg": 120,
+      "depth_available": false, "capture_resolution": [1920, 1080], "capture_fps": 30,
+      "intrinsics_source": "nominal_assumption_needs_video_calibration",
+      "source_url": "https://samsungmobilepress.com/press-releases/introducing-galaxy-z-trifold-the-shape-of-whats-next-in-mobile-innovation/"
+    },
+    "zed2i": {
+      "name": "ZED 2i 2.1mm polarized, nominal max FoV preview",
+      "width": 960, "height": 540, "horizontal_fov_deg": 110, "vertical_fov_deg": 70,
+      "depth_available": true, "depth_range_m": [0.3, 20], "stereo_baseline_m": 0.12,
+      "capture_resolution": [1280, 720], "capture_fps": 30,
+      "intrinsics_source": "nominal_max_fov_axes_needs_SDK_rectified_intrinsics",
+      "source_url": "https://www.stereolabs.com/docs/products/cameras/zed/specifications"
+    },
+    "helios_ray_chroma": {
+      "name": "Helios2 Ray Chroma HTR-RGB-001, registered RGB-D grid",
+      "width": 640, "height": 480, "horizontal_fov_deg": 67, "vertical_fov_deg": 51,
+      "depth_available": true, "depth_range_m": [0.3, 8.3],
+      "capture_resolution": [640, 480], "capture_fps": 30,
+      "intrinsics_source": "nominal_ToF_grid_not_native_Triton_RGB_intrinsics",
+      "source_url": "https://thinklucid.com/product/helios2-chroma-3d-rgbd-camera/"
+    }
+  },
+  "grasp_hand": {
+    "handedness": "Right",
+    "asset_path": "outputs/hand_assets/right.glb",
+    "asset_sha256": "291790c14f7f88a7f9bd35330c47392ed8e8d395ae6728f4bb7089f1bc1f2b96",
+    "asset_url": "https://cdn.jsdelivr.net/npm/@webxr-input-profiles/assets@1.0/dist/profiles/generic-hand/right.glb",
+    "asset_license": "MIT, immersive-web/webxr-input-profiles assets",
+    "T_tool_hand": [[0, 0, -1, 0.065], [-1, 0, 0, 0.125], [0, 1, 0, -0.28], [0, 0, 0, 1]],
+    "finger_curl_deg": [55, 75, 35], "thumb_curl_deg": [20, 25, 20],
+    "skin_color": [0.72, 0.43, 0.29],
+    "forearm_end_tool_m": [0.10, 0.20, -0.62], "forearm_radius_m": 0.035
+  },
+  "scenarios": [
+    {"name": "main_near_aimed", "sensor": "galaxy_main", "mount": "helmet_front", "head_position_surface_m": [0, 0.42, 0.65], "helmet_pitch_deg": 50, "camera_motion": "moving", "path": "horizontal", "view": "near_aimed"},
+    {"name": "main_normal_aimed", "sensor": "galaxy_main", "mount": "helmet_front", "head_position_surface_m": [0, 0.42, 0.85], "helmet_pitch_deg": 42, "camera_motion": "moving", "path": "horizontal", "view": "normal_aimed"},
+    {"name": "main_normal_level", "sensor": "galaxy_main", "mount": "helmet_front", "head_position_surface_m": [0, 0.42, 0.85], "helmet_pitch_deg": 10, "camera_motion": "moving", "path": "horizontal", "view": "normal_level"},
+    {"name": "ultrawide_near_aimed", "sensor": "galaxy_ultrawide", "mount": "helmet_front", "head_position_surface_m": [0, 0.42, 0.65], "helmet_pitch_deg": 50, "camera_motion": "moving", "path": "horizontal", "view": "near_aimed"},
+    {"name": "ultrawide_normal_aimed", "sensor": "galaxy_ultrawide", "mount": "helmet_front", "head_position_surface_m": [0, 0.42, 0.85], "helmet_pitch_deg": 42, "camera_motion": "moving", "path": "horizontal", "view": "normal_aimed"},
+    {"name": "ultrawide_normal_level", "sensor": "galaxy_ultrawide", "mount": "helmet_front", "head_position_surface_m": [0, 0.42, 0.85], "helmet_pitch_deg": 10, "camera_motion": "moving", "path": "horizontal", "view": "normal_level"},
+    {"name": "zed_near_aimed", "sensor": "zed2i", "mount": "helmet_front", "head_position_surface_m": [0, 0.42, 0.65], "helmet_pitch_deg": 50, "camera_motion": "moving", "path": "horizontal", "view": "near_aimed"},
+    {"name": "zed_normal_aimed", "sensor": "zed2i", "mount": "helmet_front", "head_position_surface_m": [0, 0.42, 0.85], "helmet_pitch_deg": 42, "camera_motion": "moving", "path": "horizontal", "view": "normal_aimed"},
+    {"name": "zed_normal_level", "sensor": "zed2i", "mount": "helmet_front", "head_position_surface_m": [0, 0.42, 0.85], "helmet_pitch_deg": 10, "camera_motion": "moving", "path": "horizontal", "view": "normal_level"},
+    {"name": "helios_near_aimed", "sensor": "helios_ray_chroma", "mount": "helmet_front", "head_position_surface_m": [0, 0.42, 0.65], "helmet_pitch_deg": 50, "camera_motion": "moving", "path": "horizontal", "view": "near_aimed"},
+    {"name": "helios_normal_aimed", "sensor": "helios_ray_chroma", "mount": "helmet_front", "head_position_surface_m": [0, 0.42, 0.85], "helmet_pitch_deg": 42, "camera_motion": "moving", "path": "horizontal", "view": "normal_aimed"},
+    {"name": "helios_normal_level", "sensor": "helios_ray_chroma", "mount": "helmet_front", "head_position_surface_m": [0, 0.42, 0.85], "helmet_pitch_deg": 10, "camera_motion": "moving", "path": "horizontal", "view": "normal_level"},
+    {"name": "main_far_aimed", "sensor": "galaxy_main", "mount": "helmet_front", "head_position_surface_m": [0, 0.42, 1.10], "helmet_pitch_deg": 32, "camera_motion": "moving", "path": "horizontal", "view": "far_aimed"},
+    {"name": "ultrawide_far_aimed", "sensor": "galaxy_ultrawide", "mount": "helmet_front", "head_position_surface_m": [0, 0.42, 1.10], "helmet_pitch_deg": 32, "camera_motion": "moving", "path": "horizontal", "view": "far_aimed"},
+    {"name": "zed_far_aimed", "sensor": "zed2i", "mount": "helmet_front", "head_position_surface_m": [0, 0.42, 1.10], "helmet_pitch_deg": 32, "camera_motion": "moving", "path": "horizontal", "view": "far_aimed"},
+    {"name": "helios_far_aimed", "sensor": "helios_ray_chroma", "mount": "helmet_front", "head_position_surface_m": [0, 0.42, 1.10], "helmet_pitch_deg": 32, "camera_motion": "moving", "path": "horizontal", "view": "far_aimed"}
+  ]
+}

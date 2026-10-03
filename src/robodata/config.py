@@ -7,7 +7,25 @@ import numpy as np
 import yaml
 from pydantic import Field, model_validator
 
+from .geometry import validate_transform
 from .schema import Contract
+
+
+class HandAssistanceSpec(Contract):
+    points_hand_m: dict[str, list[float]]
+    T_hand_tool: list[list[float]]
+    calibration_source: str
+    handedness: Literal["Left", "Right"]
+    grasp_verified: bool = False
+
+    @model_validator(mode="after")
+    def calibrated(self):
+        validate_transform(self.T_hand_tool)
+        if not self.calibration_source.strip() or any(
+            len(p) != 3 or not np.isfinite(p).all() for p in self.points_hand_m.values()
+        ):
+            raise ValueError("Hand assistance requires sourced finite calibration")
+        return self
 
 
 class ObjectSpec(Contract):
@@ -34,6 +52,7 @@ class RunConfig(Contract):
     surface_method: Literal["pnp", "depth_plane"] = "pnp"
     tool: ObjectSpec
     surface: ObjectSpec
+    hand_assistance: HandAssistanceSpec | None = None
     horizon_sec: float = Field(default=0.2, gt=0)
     timestamp_tolerance_sec: float = Field(default=0.04, ge=0)
     max_reprojection_error_px: float = Field(default=4.0, gt=0)

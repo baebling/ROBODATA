@@ -34,6 +34,8 @@ def test_first_hit_depth_separates_occupancy_from_tool_occlusion():
     assert result["tool_roi_occlusion"] == pytest.approx(2 / 6)
     assert result["total_roi_occlusion"] == pytest.approx(4 / 6)
     assert result["tool_occluded_pixels"] == 2
+    assert result["hand_image_occupancy"] == pytest.approx(1 / 6)
+    assert result["hand_roi_occlusion"] == pytest.approx(1 / 6)
 
 
 def test_unknown_roi_depth_is_not_reported_as_unoccluded():
@@ -47,6 +49,7 @@ def test_unknown_roi_depth_is_not_reported_as_unoccluded():
     )
     assert result["tool_roi_occlusion"] is None
     assert result["invalid_roi_depth_pixels"] == 1
+    assert result["hand_roi_occlusion"] is None
 
 
 def test_empty_roi_is_unknown_not_zero_occlusion():
@@ -60,6 +63,7 @@ def test_empty_roi_is_unknown_not_zero_occlusion():
     )
     assert result["tool_roi_occlusion"] is None
     assert result["roi_pixels"] == 0
+    assert result["hand_roi_occlusion"] is None
 
 
 def test_roi_out_of_view_fraction_is_separate_from_occlusion():

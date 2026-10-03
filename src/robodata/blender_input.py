@@ -99,6 +99,8 @@ def assemble_rendered(render_root: Path | str, output_root: Path | str) -> Path:
     if convention not in {"ray_distance", "axial_z"}:
         raise ValueError("Unknown rendered depth convention")
     shape = (camera.height, camera.width)
+    profile = meta.get("sensor_profile") or {}
+    depth_available = profile.get("depth_available", True)
     tool_ids = meta.get("tool_label_ids", [2])
     if (
         not isinstance(tool_ids, list)
@@ -171,7 +173,7 @@ def assemble_rendered(render_root: Path | str, output_root: Path | str) -> Path:
                         "keypoints": f["surface_keypoints"],
                         "mask_path": f"masks/surface_{i:05d}.png",
                     },
-                    "depth_path": f"depth/{i:05d}.npy",
+                    "depth_path": f"depth/{i:05d}.npy" if depth_available else None,
                 }
             )
             T = inverse(f["T_world_surface"]) @ np.asarray(f["T_world_tool"])
@@ -224,12 +226,14 @@ def assemble_rendered(render_root: Path | str, output_root: Path | str) -> Path:
             "timestamps_sec": timestamps.tolist(),
             "observations": observations,
             "landmark_source": "blender_oracle_projected_markers",
-            "depth_aligned_to_rgb": True,
+            "depth_aligned_to_rgb": depth_available,
             "provenance": provenance,
         }
     )
     write_json(out / "manifest.json", manifest.model_dump(mode="json"))
     for mode in ["rgb", "rgbd"]:
+        if mode == "rgbd" and not depth_available:
+            continue
         cfg = RunConfig(
             manifest_path="manifest.json",
             mode=mode,
@@ -240,6 +244,7 @@ def assemble_rendered(render_root: Path | str, output_root: Path | str) -> Path:
             tool={"points_m": meta["tool_points_m"]},
             surface={"points_m": meta["surface_points_m"]},
             depth_unit_m=1.0,
+            depth_range_m=profile.get("depth_range_m", (0.05, 10.0)),
             horizon_sec=0.2,
             timestamp_tolerance_sec=0.01,
             seed=meta.get("seed", 42),

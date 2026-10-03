@@ -378,6 +378,30 @@
           ],
           "default": null,
           "title": "Frame Method"
+        },
+        "metric_scale_source": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Metric Scale Source"
+        },
+        "calibration_source": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Calibration Source"
         }
       },
       "required": [
@@ -642,7 +666,8 @@
           "enum": [
             "measured_geometry",
             "depth_sensor",
-            "calibrated_external"
+            "calibrated_external",
+            "mixed_depth_and_hand_calibration"
           ],
           "title": "Metric Scale Source",
           "type": "string"

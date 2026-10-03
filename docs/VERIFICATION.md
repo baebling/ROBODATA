@@ -179,3 +179,27 @@ multi-part tool masks and evaluation-reference exclusion from inference. An
 independent read-only review found no actionable issues in the change. Raw
 images, the labelled contact sheet and report were inspected. Boundary raster
 aliasing is not exhaustively tested; no practical perception accuracy is claimed.
+
+## Helmet Camera / Hand Assistance: 2026-10-03
+
+Final raw/evaluation/model outputs are the version-02 folders recorded in
+HELMET_SENSOR_HAND_PILOT.md. The rigid helmet mount and four nominal sensor
+profiles render all 16 episodes / 128 frames; independent depth checks pass at
+the import boundary. All renderer hashes match. Phone inference excludes depth.
+Actual MediaPipe 0.10.21 VIDEO inference produces 24 associated hands but zero
+accepted hand poses and zero canonical poses. RGB-D is 0/64; errors are null,
+not zero. Failed frames, occlusions and evaluation-only GT are preserved.
+
+Fresh verification: 193 pytest tests pass with the existing learning runtime;
+format/lint and mypy pass (27 source files). Thirteen actual Blender checks pass,
+including four camera projection/mount/hand-asset checks and the nine previous
+beam/hopper checks. Optional hand-runtime `pip check` passes. Images and the
+selected-prediction contact sheet were inspected.
+
+Independent review found missing handedness binding, stale raw/baseline pairing,
+nonrigid up offset, scale/timestamp provenance and overflowing labels. Fixes and
+regressions cover each. An opt-in calibrated hand path may infer an occluded
+tool while preserving its flag/method; an occluded hand still rejects inference.
+Final read-only review of that behavior found no issue. Real calibration, worker
+identity, grip changes, articulated hand templates, gloves, sensor error and
+unknown-surface reconstruction remain unverified.

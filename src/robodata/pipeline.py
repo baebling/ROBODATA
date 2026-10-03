@@ -116,11 +116,25 @@ def run_episode(
                         frame_method="initial_visible_patch_centroid_camera_x_static_reference",
                     )
                 surf = surface_reference.model_copy(deep=True)
-            tool = (
-                pnp_observation(obs.tool, cfg.tool, manifest.camera, cfg)
-                if cfg.mode == "rgb"
-                else (depth_tool(obs.tool, depth, manifest.camera, cfg))
-            )
+            try:
+                tool = (
+                    pnp_observation(obs.tool, cfg.tool, manifest.camera, cfg)
+                    if cfg.mode == "rgb"
+                    else (depth_tool(obs.tool, depth, manifest.camera, cfg))
+                )
+            except ValueError as tool_error:
+                if cfg.hand_assistance is None:
+                    raise
+                from .hand_assistance import hand_tool_observation
+
+                try:
+                    tool = hand_tool_observation(
+                        obs.hand, cfg.hand_assistance, manifest.camera, cfg
+                    )
+                except ValueError as hand_error:
+                    raise ValueError(
+                        f"Tool: {tool_error}; hand assistance: {hand_error}"
+                    ) from hand_error
             S_C = inverse(surf.T_camera_frame)
             point = S_C[:3, :3] @ np.array(tool.origin_camera_m) + S_C[:3, 3]
             axis = unit(S_C[:3, :3] @ np.array(tool.axis_camera))
@@ -166,7 +180,12 @@ def run_episode(
         surface_frame_id=cfg.surface_frame_id,
         source=Source(
             mode=cfg.mode,
-            metric_scale_source=cfg.metric_scale_source,
+            metric_scale_source="mixed_depth_and_hand_calibration"
+            if cfg.mode == "rgbd"
+            and any(
+                f.tool is not None and f.tool.method == "calibrated_hand_grasp_pnp" for f in frames
+            )
+            else cfg.metric_scale_source,
             data_kind=manifest.data_kind,
             manifest_path=str(manifest_path),
             rgb_video_path=manifest.video_path,

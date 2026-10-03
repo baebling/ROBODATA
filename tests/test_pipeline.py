@@ -56,3 +56,60 @@ def test_explicit_timestamps_must_match_video_length(tmp_path):
     path.write_text(json.dumps(manifest))
     with pytest.raises(ValueError, match="timestamp"):
         run_episode(tmp_path / "inputs" / "rgb.yaml", tmp_path / "out")
+
+
+@pytest.mark.parametrize(
+    "verified,hand_missing,tool_occluded",
+    [(True, False, False), (False, False, False), (True, True, False), (True, False, True)],
+)
+@pytest.mark.parametrize("mode", ["rgb", "rgbd"])
+def test_calibrated_hand_fallback_preserves_failed_frames(
+    tmp_path, verified, hand_missing, tool_occluded, mode
+):
+    import yaml
+
+    inputs = create_demo(tmp_path / "inputs", frames=8, occluded=[])
+    path = inputs / f"{mode}.yaml"
+    cfg = yaml.safe_load(path.read_text())
+    cfg["surface_method"] = "pnp"
+    # Analytic fixture: hand-frame points coincide with the synthetic tool frame.
+    names = ["0", "5", "9", "13", "17", "1", "2", "3"]
+    correspondence = dict(zip(names, cfg["tool"]["points_m"], strict=True))
+    cfg["hand_assistance"] = {
+        "points_hand_m": dict(zip(names, cfg["tool"]["points_m"].values(), strict=True)),
+        "T_hand_tool": np.eye(4).tolist(),
+        "calibration_source": "analytic_test_fixture_not_real_hand",
+        "grasp_verified": verified,
+        "handedness": "Right",
+    }
+    path.write_text(yaml.safe_dump(cfg))
+    manifest_path = inputs / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    for obs in manifest["observations"]:
+        obs["hand"] = (
+            {"keypoints": {}}
+            if hand_missing
+            else {
+                "handedness": "Right",
+                "keypoints": {
+                    n: obs["tool"]["keypoints"][key] for n, key in correspondence.items()
+                },
+            }
+        )
+        obs["tool"]["keypoints"] = {}
+        obs["tool"]["occluded"] = tool_occluded
+    manifest_path.write_text(json.dumps(manifest))
+    episode = run_episode(path, tmp_path / "out")
+    assert len(episode.frames) == 8
+    for frame in episode.frames:
+        assert frame.quality.valid == (verified and not hand_missing)
+        assert frame.quality.occluded == tool_occluded
+        if frame.quality.valid:
+            assert frame.tool.method == "calibrated_hand_grasp_pnp"
+            assert frame.tool.metric_scale_source == "calibrated_hand_template"
+            assert frame.canonical.standoff_distance_m == pytest.approx(0.3, abs=1e-5)
+        else:
+            assert "hand assistance" in frame.quality.failure_reason
+            assert frame.canonical.T_surface_tool is None
+    if mode == "rgbd" and verified and not hand_missing:
+        assert episode.source.metric_scale_source == "mixed_depth_and_hand_calibration"

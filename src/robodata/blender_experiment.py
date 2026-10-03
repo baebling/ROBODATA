@@ -67,6 +67,8 @@ def measure_occlusion(source, dataset, metadata) -> dict:
         "tool_roi_occlusion",
         "total_roi_occlusion",
         "roi_out_of_view_fraction",
+        "hand_image_occupancy",
+        "hand_roi_occlusion",
     ]:
         values = [r[key] for r in records if r[key] is not None]
         summary["mean_" + key] = float(np.mean(values)) if values else None
@@ -276,6 +278,8 @@ def run_blender_experiment(render_root: Path | str, output_root: Path | str) -> 
             write_json(case / "occlusion_reference.json", occlusion)
         by_mode = {}
         for mode in ["rgb", "rgbd"]:
+            if not (dataset / f"{mode}.yaml").is_file():
+                continue
             folder = case / mode
             episode = run_episode(dataset / f"{mode}.yaml", folder)
             by_mode[mode] = episode
@@ -304,6 +308,7 @@ def run_blender_experiment(render_root: Path | str, output_root: Path | str) -> 
                     hopper_scale=scenario.get("hopper_scale", 1),
                     view=scenario.get("view", "unspecified"),
                     camera_motion=meta["camera_motion"],
+                    sensor=scenario.get("sensor"),
                     occlusion=occlusion["summary"],
                     validity=validity_summary(
                         [f.quality.valid for f in episode.frames],
@@ -349,7 +354,11 @@ def run_blender_experiment(render_root: Path | str, output_root: Path | str) -> 
                     fill="white",
                 )
                 rgb_count = sum(f.quality.valid for f in by_mode["rgb"].frames)
-                depth_count = sum(f.quality.valid for f in by_mode["rgbd"].frames)
+                depth_count = (
+                    sum(f.quality.valid for f in by_mode["rgbd"].frames)
+                    if "rgbd" in by_mode
+                    else "unavailable"
+                )
                 draw.text(
                     (8, image.height + 19),
                     f"Valid RGB {rgb_count}/{len(meta['frames'])} | "
@@ -450,7 +459,8 @@ def run_blender_experiment(render_root: Path | str, output_root: Path | str) -> 
             "includes hidden pixels. Tool occlusion requires first-hit tool depth in front",
             "of the ROI plane; surface calibration spheres are excluded. Missing ROI depth",
             "or an empty projection produces null occlusion, not zero. Out-of-view area is",
-            "recorded separately. No hands, mist, motion blur or materials are simulated.",
+            "recorded separately. Hand geometry, when configured, is synthetic fixed-grasp.",
+            "No mist, motion blur, material deposition or calibrated sensor noise is simulated.",
             "",
             "| Scenario | Mode | Tool image % | Tool ROI hidden % | "
             "Valid % | Full pose % | Longest valid s |",

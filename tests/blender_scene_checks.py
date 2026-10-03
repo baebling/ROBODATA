@@ -52,4 +52,30 @@ for scale in [0.75, 1.0, 1.25]:
     relation = renderer["nozzle_reference"](scene, hopper_cfg, tool, S)
     assert relation["status"] == "work_face_hit" and relation["scene_ray_agrees"]
     print("ROBODATA_HOPPER_SCENE_CHECK", scale, flush=True)
-print("ROBODATA_SCENE_CHECKS_PASSED", len(checks) + 3, flush=True)
+helmet_cfg = json.loads((root / "configs/blender_helmet_sensors.json").read_text())
+helmet_cfg = {**hopper_cfg, **helmet_cfg}
+for sensor in helmet_cfg["sensor_profiles"]:
+    case = next(s for s in helmet_cfg["scenarios"] if s["sensor"] == sensor)
+    effective = renderer["scenario_camera_config"](helmet_cfg, case)
+    scene, tool, camera, S, *_ = renderer["setup_scene"](effective, case)
+    renderer["set_pose"](effective, case, tool, camera, S, 0)
+    bpy.context.view_layer.update()
+    projection = camera.calc_matrix_camera(
+        bpy.context.evaluated_depsgraph_get(),
+        x=effective["width"],
+        y=effective["height"],
+        scale_x=scene.render.pixel_aspect_x,
+        scale_y=scene.render.pixel_aspect_y,
+    )
+    K = renderer["camera_intrinsics"](effective)
+    assert abs(projection[0][0] * effective["width"] / 2 - K[0, 0]) < 0.001
+    assert abs(projection[1][1] * effective["height"] / 2 - K[1, 1]) < 0.001
+    position, direction = renderer["helmet_camera_pose"](effective, case, 0)
+    assert (camera.location - S @ Vector(position)).length < 1e-6
+    forward = camera.matrix_world.to_3x3() @ Vector((0, 0, -1))
+    assert (forward - S.to_3x3() @ Vector(direction)).length < 1e-6
+    assert any(o.pass_index == 6 for o in scene.objects if o.type == "MESH")
+    calibration = json.loads(tool["hand_calibration_json"])
+    assert len(calibration["points_hand_m"]) == 21 and calibration["grasp_verified"]
+    print("ROBODATA_HELMET_SCENE_CHECK", sensor, flush=True)
+print("ROBODATA_SCENE_CHECKS_PASSED", len(checks) + 7, flush=True)

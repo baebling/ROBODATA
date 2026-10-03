@@ -70,6 +70,13 @@ mesh, a real-data pilot or an evaluation of learned perception.
 
 ## Train RGB Perception
 
+The [helmet-camera / hand-assistance pilot](docs/HELMET_SENSOR_HAND_PILOT.md)
+uses an optional pretrained MediaPipe hand model, calibrated fixed-grasp PnP,
+and four nominal camera profiles across four helmet distance/pitch conditions.
+It preserves failed frames and compares hand-assisted coverage with the existing
+tool baseline. Synthetic hand calibration and nominal FoV are not real measurements.
+Blender hand assets and model weights are checksum-pinned downloads, not bundled.
+
 Install a platform-appropriate PyTorch build, or `pip install -e '.[learning]'`.
 Then run the synthetic smoke example:
 

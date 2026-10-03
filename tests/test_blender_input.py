@@ -70,6 +70,19 @@ def test_tool_mask_includes_hopper_and_nozzle_part_ids(tmp_path):
     assert mask[0, :4].tolist() == [255, 255, 255, 0]
 
 
+def test_rgb_only_sensor_never_supplies_ideal_depth_to_inference(tmp_path):
+    root = tmp_path / "render"
+    meta = rendered_fixture(root)
+    meta["sensor_profile"] = {"depth_available": False}
+    (root / "render_metadata.json").write_text(json.dumps(meta))
+    out = adapter().assemble_rendered(root, tmp_path / "dataset")
+    manifest = json.loads((out / "manifest.json").read_text())
+    assert all(o["depth_path"] is None for o in manifest["observations"])
+    assert not manifest["depth_aligned_to_rgb"]
+    assert not (out / "rgbd.yaml").exists()
+    assert (out / "depth/00000.npy").exists(), "Depth retained only for visibility evaluation"
+
+
 def test_occlusion_reference_stays_out_of_inference_manifest(tmp_path):
     from robodata.blender_experiment import measure_occlusion
 

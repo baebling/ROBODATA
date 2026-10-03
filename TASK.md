@@ -26,3 +26,10 @@ then run paired RGB/RGB-D simulations. With no measured 25D497 exterior yet,
 the new scene is an explicitly unmeasured illustrative proxy, not product CAD.
 Preserve the old scene/renders; do not change learned perception or policy scope.
 Record implementation, realized visibility, validity/temporal gaps and failures.
+
+Latest approved follow-up: use an RGB hand-pose model to assist the grasped tool,
+move the camera to an explicit helmet-front head-mounted frame, and test Galaxy
+TriFold, ZED 2i 2.1mm and Helios2 Ray Chroma viewpoints. BLK360 G1 remains a static
+surface-reference device. Use nominal FoV only as a labeled simulation assumption;
+real camera intrinsics and measured hand/tool calibration remain required.
+Preserve all previous renders and report actual model failures as well as coverage.

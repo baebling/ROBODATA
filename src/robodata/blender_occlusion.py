@@ -89,6 +89,10 @@ def occlusion_metrics(roi, expected_depth, labels, depth, tool_ids, tolerance_m)
         "total_occluded_pixels": int(occluded.sum()),
         "tool_roi_occlusion": int(tool_occluded.sum()) / denominator if denominator else None,
         "total_roi_occlusion": int(occluded.sum()) / denominator if denominator else None,
+        "hand_image_occupancy": float((labels == 6).mean()),
+        "hand_roi_occlusion": int((occluded & (labels == 6)).sum()) / denominator
+        if denominator
+        else None,
     }
 
 

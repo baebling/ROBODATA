@@ -19,6 +19,10 @@
   holdouts; one G-TEX cannot establish cross-tool-shape generalization.
 - Define material-specific requirements before deposition/quality claims;
   nominal nozzle-ray hits alone are geometric diagnostics.
+- Measure worker-specific hand template and hand-to-nozzle calibration; determine
+  how grip changes, gloves, finger occlusion and tool symmetry affect hand assistance.
+- Calibrate helmet mount pose and each video-mode camera; confirm native Triton
+  RGB intrinsics versus Helios registered RGB-D grid and actual Chroma assembly.
 
 These questions do not prevent running the current baseline, but they constrain
 the scientific claims that can be made from its outputs.

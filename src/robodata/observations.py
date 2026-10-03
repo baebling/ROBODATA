@@ -42,12 +42,14 @@ class Detection(Contract):
     keypoints: dict[str, Keypoint] = Field(default_factory=dict)
     mask_path: str | None = None
     occluded: bool = False
+    handedness: Literal["Left", "Right"] | None = None
 
 
 class FrameInput(Contract):
     frame_index: int = Field(ge=0)
     tool: Detection = Field(default_factory=Detection)
     surface: Detection = Field(default_factory=Detection)
+    hand: Detection = Field(default_factory=Detection)
     depth_path: str | None = None
     work_on: bool | None = None
     primitive_label: str | None = None

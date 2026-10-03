@@ -10,9 +10,15 @@ from pathlib import Path
 
 import bpy
 from bpy_extras.object_utils import world_to_camera_view
-from mathutils import Euler, Matrix, Vector
+from mathutils import Euler, Matrix, Quaternion, Vector
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+from robodata.blender_camera import (  # noqa: E402
+    blender_pixel_aspect,
+    camera_intrinsics,
+    helmet_camera_pose,
+    scenario_camera_config,
+)
 from robodata.blender_geometry import (  # noqa: E402
     nozzle_relation,
     scenario_tool_parts,
@@ -86,6 +92,100 @@ def file_output(group, directory, name, image_format, color_depth, socket):
     node.save_as_render = False
     group.links.new(socket, node.inputs[0])
     return node
+
+
+def setup_grasp_hand(cfg, tool):
+    """Pose a licensed WebXR hand; its fixed synthetic calibration is an explicit prior."""
+    hand = cfg["grasp_hand"]
+    asset = (Path(__file__).resolve().parents[1] / hand["asset_path"]).resolve()
+    if hashlib.sha256(asset.read_bytes()).hexdigest() != hand["asset_sha256"]:
+        raise ValueError("Hand asset checksum mismatch")
+    before = set(bpy.context.scene.objects)
+    bpy.ops.import_scene.gltf(filepath=str(asset))
+    imported = set(bpy.context.scene.objects) - before
+    rig = next(o for o in imported if o.type == "ARMATURE")
+    meshes = [
+        o
+        for o in imported
+        if o.type == "MESH" and any(m.type == "ARMATURE" and m.object == rig for m in o.modifiers)
+    ]
+    mesh_local = {o: rig.matrix_world.inverted() @ o.matrix_world for o in meshes}
+    for obj in imported - {rig, *meshes}:
+        bpy.data.objects.remove(obj, do_unlink=True)
+    names = [
+        "wrist",
+        "thumb-metacarpal",
+        "thumb-phalanx-proximal",
+        "thumb-phalanx-distal",
+        "thumb-tip",
+    ]
+    for finger in ["index", "middle", "ring", "pinky"]:
+        names.extend(
+            f"{finger}-finger-{part}"
+            for part in ["phalanx-proximal", "phalanx-intermediate", "phalanx-distal", "tip"]
+        )
+    wrist = rig.data.bones["wrist"].head_local
+    y = (rig.data.bones[names[9]].head_local - wrist).normalized()
+    x = rig.data.bones[names[5]].head_local - rig.data.bones[names[17]].head_local
+    x = (x - y * x.dot(y)).normalized()
+    source = Matrix((x, y, x.cross(y))).transposed().to_4x4()
+    source.translation = wrist
+    target = Matrix(hand["T_tool_hand"])
+    for finger in ["index", "middle", "ring", "pinky"]:
+        proximal = rig.data.bones[f"{finger}-finger-phalanx-proximal"]
+        following = rig.data.bones[f"{finger}-finger-phalanx-intermediate"]
+        along = (following.head_local - proximal.head_local).normalized()
+        axis = along.cross(x.cross(y)).normalized()
+        for part, angle in zip(
+            ["proximal", "intermediate", "distal"], hand["finger_curl_deg"], strict=True
+        ):
+            bone = rig.pose.bones[f"{finger}-finger-phalanx-{part}"]
+            bone.rotation_mode = "QUATERNION"
+            local_axis = bone.bone.matrix_local.to_3x3().inverted() @ axis
+            bone.rotation_quaternion = Quaternion(local_axis, math.radians(angle))
+    for name, angle in zip(names[1:4], hand["thumb_curl_deg"], strict=True):
+        bone = rig.pose.bones[name]
+        bone.rotation_mode = "QUATERNION"
+        bone.rotation_quaternion = Quaternion(
+            bone.bone.matrix_local.to_3x3().inverted() @ x, math.radians(angle)
+        )
+    rig.parent = tool
+    rig.matrix_local = target @ source.inverted()
+    rig.name = "SyntheticGraspHand"
+    skin = material("SyntheticSkin", tuple(hand["skin_color"]))
+    for obj in meshes:
+        obj.parent = rig
+        obj.matrix_local = mesh_local[obj]
+        obj.pass_index = 6
+        obj.data.materials.clear()
+        obj.data.materials.append(skin)
+        for polygon in obj.data.polygons:
+            polygon.use_smooth = True
+    bpy.context.view_layer.update()
+    points_tool = {str(i): rig.matrix_local @ rig.pose.bones[n].head for i, n in enumerate(names)}
+    points_hand = {i: list(target.inverted() @ p) for i, p in points_tool.items()}
+    start, end = target.translation, Vector(hand["forearm_end_tool_m"])
+    arm = mesh_object(
+        "SyntheticForearm",
+        "cylinder",
+        (start + end) / 2,
+        radius=hand["forearm_radius_m"],
+        length=(end - start).length,
+        parent=tool,
+        mat=skin,
+        index=6,
+    )
+    arm.rotation_euler = (end - start).to_track_quat("Z", "Y").to_euler()
+    tool["hand_calibration_json"] = json.dumps(
+        {
+            "points_hand_m": points_hand,
+            "T_hand_tool": [list(r) for r in target.inverted()],
+            "calibration_source": "synthetic_fixed_grasp_WebXR_template_NOT_real_measurement",
+            "grasp_verified": True,
+            "handedness": hand["handedness"],
+        }
+    )
+    tool["hand_points_tool_json"] = json.dumps({i: list(p) for i, p in points_tool.items()})
 
 
 def setup_scene(cfg, scenario):
@@ -217,12 +317,16 @@ def setup_scene(cfg, scenario):
             index=3,
         )
         surface_markers[name] = obj
+    if "grasp_hand" in cfg:
+        setup_grasp_hand(cfg, tool)
     data = bpy.data.cameras.new("RGB_Camera")
     camera = bpy.data.objects.new("RGB_Camera", data)
     scene.collection.objects.link(camera)
     data.sensor_width = 36.0
     data.sensor_fit = "HORIZONTAL"
-    data.lens = cfg["camera_focal_px"] * data.sensor_width / cfg["width"]
+    K = camera_intrinsics(cfg)
+    data.lens = K[0, 0] * data.sensor_width / cfg["width"]
+    scene.render.pixel_aspect_x, scene.render.pixel_aspect_y = blender_pixel_aspect(K)
     data.clip_start, data.clip_end = 0.01, 100.0
     scene.camera = camera
     for name, pos, power, size in [
@@ -278,12 +382,19 @@ def set_pose(cfg, scenario, tool, camera, S, i):
     if "nozzle_position_surface_m" in scenario:
         pose.translation = Vector(scenario["nozzle_position_surface_m"])
     tool.matrix_world = S @ pose
-    position = Vector(scenario.get("camera_position_surface_m", cfg["camera_position_surface_m"]))
-    if scenario["camera_motion"] == "moving":
-        amplitude = cfg["camera_motion_amplitude_m"]
-        position += Vector((amplitude * math.sin(2 * math.pi * u), amplitude * (2 * u - 1), 0))
+    if scenario.get("mount") == "helmet_front":
+        position, direction = helmet_camera_pose(cfg, scenario, i)
+        position = Vector(position)
+        target = S @ (position + Vector(direction))
+    else:
+        position = Vector(
+            scenario.get("camera_position_surface_m", cfg["camera_position_surface_m"])
+        )
+        if scenario["camera_motion"] == "moving":
+            amplitude = cfg["camera_motion_amplitude_m"]
+            position += Vector((amplitude * math.sin(2 * math.pi * u), amplitude * (2 * u - 1), 0))
+        target = S @ Vector(cfg["camera_target_surface_m"])
     camera.location = S @ position
-    target = S @ Vector(cfg["camera_target_surface_m"])
     camera.rotation_euler = (target - camera.location).to_track_quat("-Z", "Y").to_euler()
     for obj, fields in [
         (tool, ["location", "rotation_quaternion"]),
@@ -320,10 +431,11 @@ def keypoints(scene, camera, markers):
 
 def depth_checks(scene, camera, cfg):
     depsgraph = bpy.context.evaluated_depsgraph_get()
-    w, h, focal = cfg["width"], cfg["height"], cfg["camera_focal_px"]
+    w, h = cfg["width"], cfg["height"]
+    K = camera_intrinsics(cfg)
     checks = []
     for u, v in [(w // 2, h // 2), (w // 3, h // 2), (2 * w // 3, h // 2), (w // 2, 2 * h // 3)]:
-        local_ray = Vector(((u - (w - 1) / 2) / focal, -(v - (h - 1) / 2) / focal, -1)).normalized()
+        local_ray = Vector(((u - K[0, 2]) / K[0, 0], -(v - K[1, 2]) / K[1, 1], -1)).normalized()
         direction = camera.matrix_world.to_3x3() @ local_ray
         hit = scene.ray_cast(depsgraph, camera.location, direction, distance=100)
         if hit[0]:
@@ -374,6 +486,7 @@ def nozzle_reference(scene, cfg, tool, S):
 
 
 def render_scenario(cfg, scenario, root, config_hash, render_provenance):
+    cfg = scenario_camera_config(cfg, scenario)
     folder = root / scenario["name"]
     folder.mkdir()
     scene, tool, camera, S, tm, sm, group, render = setup_scene(cfg, scenario)
@@ -426,7 +539,7 @@ def render_scenario(cfg, scenario, root, config_hash, render_provenance):
             if area.type == "VIEW_3D":
                 area.spaces.active.region_3d.view_perspective = "CAMERA"
     bpy.ops.wm.save_as_mainfile(filepath=str(folder / "hbeam_spray.blend"))
-    f, w, h = cfg["camera_focal_px"], cfg["width"], cfg["height"]
+    w, h = cfg["width"], cfg["height"]
     metadata = {
         "episode_id": scenario["name"],
         "blender_version": bpy.app.version_string,
@@ -435,7 +548,8 @@ def render_scenario(cfg, scenario, root, config_hash, render_provenance):
         "fps": cfg["fps"],
         "expected_frames": cfg["frames"],
         "seed": cfg["seed"],
-        "camera_matrix": [[f, 0, (w - 1) / 2], [0, f, (h - 1) / 2], [0, 0, 1]],
+        "camera_matrix": camera_intrinsics(cfg).tolist(),
+        "sensor_profile": cfg.get("sensor_profile"),
         "camera_motion": scenario["camera_motion"],
         "work_face": cfg.get("work_face", "top_flange"),
         "surface_frame_id": surface_frame_identity(cfg),
@@ -454,6 +568,8 @@ def render_scenario(cfg, scenario, root, config_hash, render_provenance):
         },
         "frames": frames,
     }
+    if "hand_calibration_json" in tool:
+        metadata["hand_calibration"] = json.loads(tool["hand_calibration_json"])
     (folder / "render_metadata.json").write_text(json.dumps(metadata, indent=2), encoding="utf-8")
 
 
@@ -465,6 +581,12 @@ def main():
     parser.add_argument("--frames", type=int)
     args = parser.parse_args(sys.argv[sys.argv.index("--") + 1 :])
     cfg = json.loads(Path(args.config).read_text(encoding="utf-8"))
+    if "base_config" in cfg:
+        base = json.loads(
+            (Path(args.config).parent / cfg["base_config"]).read_text(encoding="utf-8")
+        )
+        base.update(cfg)
+        cfg = base
     if args.frames is not None:
         cfg["frames"] = args.frames
     if cfg["frames"] < 4:
