@@ -21,6 +21,7 @@
 | A008 | Agent baseline | Compact RGB heatmap/visibility U-Net is trainable, without real pretrained weights. |
 | A009 | Agent example | Existing synthetic spray proxy is an engineering fixture, not the selected G-TEX geometry or a validated material process. |
 | A010 | Approved follow-up | Web frame: face center, +x along beam, +y up, +z outward; ray/finite-face diagnostics remain separate from automatic perception. |
+| A011 | Approved follow-up 2026-10-03 | Run a simulator-only hopper size/visibility pilot using explicitly unmeasured exterior assumptions. Scale only the hopper around its attachment; preserve body/nozzle/landmarks and prior raw renders. This does not establish actual 25D497 dimensions or performance. |
 
 Thresholds are configuration defaults for engineering tests, not standards for
 fireproofing quality or validated operating limits. Revise them using the gold
@@ -28,4 +29,5 @@ benchmark and keep old experimental configurations for reproducibility.
 
 Contribution hypotheses and the 54-episode debugging pilot in
 RESEARCH_POSITIONING.md and HOPPER_GUN_EXPERIMENT.md are agent proposals, not
-researcher-approved academic claims, collected data or implemented features.
+researcher-approved academic claims or collected real data. The limited synthetic
+visibility implementation is recorded separately in HOPPER_SIMULATION_PILOT.md.

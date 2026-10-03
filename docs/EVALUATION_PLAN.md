@@ -38,8 +38,11 @@ ablations using error/coverage curves and calibration-split thresholds.
 Report full-pose, axis-only and temporal-label coverage, contiguous durations,
 gaps, reacquisition delay and GT matching coverage alongside errors. Aggregate
 uncertainty by independent episode/group and preserve failed frames. Ray-hit/
-flange/miss diagnostics do not establish deposition or quality. New benchmark
-annotations/metrics remain proposed, not implemented CLI outputs.
+flange/miss diagnostics do not establish deposition or quality. The limited
+[simulator pilot](HOPPER_SIMULATION_PILOT.md) implements first-hit fixed-ROI
+occlusion, occupancy, full/state/action coverage, constant-FPS contiguous runs
+and gaps as evaluation outputs. Learned-model ablations, reacquisition analysis,
+risk/coverage curves and independent real GT remain future benchmark work.
 
 ## Current implementation and evidence
 

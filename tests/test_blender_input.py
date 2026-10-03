@@ -55,6 +55,44 @@ def test_missing_metadata_does_not_create_dataset(tmp_path):
     assert not (tmp_path / "new").exists()
 
 
+def test_tool_mask_includes_hopper_and_nozzle_part_ids(tmp_path):
+    root = tmp_path / "render"
+    rendered_fixture(root)
+    path = root / "render_metadata.json"
+    meta = json.loads(path.read_text())
+    meta["tool_label_ids"] = [2, 4, 5]
+    path.write_text(json.dumps(meta))
+    labels = np.full((24, 32), 3, np.uint16)
+    labels[0, :4] = [2, 4, 5, 6]
+    cv2.imwrite(str(root / "labels.png"), labels)
+    out = adapter().assemble_rendered(root, tmp_path / "dataset")
+    mask = cv2.imread(str(out / "masks/tool_00000.png"), cv2.IMREAD_GRAYSCALE)
+    assert mask[0, :4].tolist() == [255, 255, 255, 0]
+
+
+def test_occlusion_reference_stays_out_of_inference_manifest(tmp_path):
+    from robodata.blender_experiment import measure_occlusion
+
+    root = tmp_path / "render"
+    rendered_fixture(root)
+    path = root / "render_metadata.json"
+    meta = json.loads(path.read_text())
+    meta["settings"] = {
+        "config": {
+            "surface_roi_bounds_m": [-0.2, -0.2, 0.2, 0.2],
+            "occlusion_depth_tolerance_m": 0.002,
+        }
+    }
+    path.write_text(json.dumps(meta))
+    before = path.read_bytes()
+    dataset = adapter().assemble_rendered(root, tmp_path / "dataset")
+    result = measure_occlusion(root, dataset, meta)
+    assert result["summary"]["mean_tool_roi_occlusion"] == 0
+    assert len(result["frames"]) == 4
+    assert "occlusion" not in (dataset / "manifest.json").read_text()
+    assert path.read_bytes() == before
+
+
 def rendered_fixture(root):
     root.mkdir()
     cv2.imwrite(str(root / "rgb.png"), np.full((24, 32, 3), 100, np.uint8))

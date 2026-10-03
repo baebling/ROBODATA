@@ -144,3 +144,26 @@ redirected to `interactive_renders`, so F12 does not overwrite the dataset frame
 
 Blender 5 uses the updated File Output image media type and `ShaderNodeMath`;
 see the [official compositor migration notes](https://developer.blender.org/docs/release_notes/5.0/migration/compositor_migration/).
+
+## Hopper Size / Visibility Extension
+
+`configs/blender_hopper_simulation.json` adds 12 eight-frame conditions: three
+unmeasured hopper scales by fixed oblique, moving helmet-like, frontal stationary,
+and moving-camera/stationary-tool groups. Body, nozzle and landmarks are fixed.
+Only the hopper is scaled about its fixed attachment. Part labels 2/4/5 combine
+into the input tool mask; the work-face mask remains label 3. Legacy label-2-only
+renders retain their original behavior.
+
+When `surface_roi_bounds_m` is present, `blender-evaluate` additionally writes
+`occlusion_reference.json`, `hopper_comparison.png` and visibility/coverage fields
+in `comparison.json`. The fixed physical ROI is projected with simulator camera
+and surface transforms for evaluation only. Its denominator includes hidden
+pixels within the image; camera out-of-view area is separate. First-hit labels
+and rendered camera-axial depth determine tool-caused/total occlusion. A tool
+behind the surface is not an occluder. Empty ROI or missing ROI depth yields
+null, not zero occlusion. Surface calibration spheres are excluded as occluders.
+
+No occlusion reference, simulator pose or ray label is supplied to inference.
+Continuous validity and failure gaps use a declared constant-FPS sample duration
+of 1/fps seconds. State/full-pose/action coverage remain separate.
+See [pilot results and reproduction](HOPPER_SIMULATION_PILOT.md) for limitations.

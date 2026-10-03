@@ -1,6 +1,28 @@
 """Finite, known H-beam geometry diagnostics, not perception or spray physics."""
 
+from copy import deepcopy
+
 import numpy as np
+
+
+def scenario_tool_parts(cfg, scenario):
+    """Change only the hopper about its attachment, keeping nozzle/body/landmarks fixed."""
+    parts = deepcopy(cfg["proxy_parts"])
+    scale = float(scenario.get("hopper_scale", 1))
+    if not np.isfinite(scale) or scale <= 0:
+        raise ValueError("Hopper scale must be finite and positive")
+    for part in parts:
+        if part.get("group") != "hopper":
+            continue
+        anchor = np.asarray(cfg["hopper_attachment_tool_m"], dtype=float)
+        if anchor.shape != (3,) or not np.isfinite(anchor).all():
+            raise ValueError("Invalid hopper attachment")
+        part["center"] = (anchor + scale * (np.asarray(part["center"]) - anchor)).tolist()
+        for key in ["size", "radius", "radius_top", "length"]:
+            if key in part:
+                value = np.asarray(part[key]) * scale
+                part[key] = value.tolist()
+    return parts
 
 
 def surface_frame_identity(cfg) -> str:

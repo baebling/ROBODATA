@@ -176,9 +176,13 @@ not measured performance, a coating model or an accuracy claim.
 
 ## Implementation boundary
 
-Detailed occlusion metrics, measured G-TEX mesh, ablations and this real pilot are
-**not implemented or collected**. The current schema/CLI does not export all the
-proposed fields. Version a separate benchmark manifest/renderer annotations and
-test geometry, visibility attribution and denominator handling before evaluating.
+The [approved simulator pilot](HOPPER_SIMULATION_PILOT.md) implements fixed-ROI
+first-hit occlusion/occupancy, three illustrative hopper scales and four view/control
+groups, with paired RGB/RGB-D validity and gaps. Evaluation-only annotations stay
+outside the inference manifest. It uses an **unmeasured** proxy, not 25D497 CAD.
+The measured G-TEX mesh, independent real GT, learned-model ablations, risk/coverage
+curves and the 54-episode real pilot are **not implemented or collected**. The
+current schema/CLI does not export all proposed fields. Add each extension with
+geometry, visibility-attribution and denominator tests before evaluating it.
 Keep raw footage and GT immutable; retain original estimates when later testing
 smoothing or gap recovery.

@@ -19,3 +19,10 @@ web. Document geometry/size/occlusion experiments and claim boundaries in
 docs/RESEARCH_POSITIONING.md and docs/HOPPER_GUN_EXPERIMENT.md. These protocols
 do not authorize fabricated tool dimensions, modify prior raw renders or imply
 that the new benchmark is implemented.
+
+Approved follow-up on 2026-10-03: commit the research refinement, extend Blender
+to study hopper size, image occupancy and fixed physical web-ROI occlusion,
+then run paired RGB/RGB-D simulations. With no measured 25D497 exterior yet,
+the new scene is an explicitly unmeasured illustrative proxy, not product CAD.
+Preserve the old scene/renders; do not change learned perception or policy scope.
+Record implementation, realized visibility, validity/temporal gaps and failures.

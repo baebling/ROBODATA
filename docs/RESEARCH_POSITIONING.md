@@ -142,7 +142,10 @@ Current code implements surface-relative labels and synthetic geometry checks,
 not this full benchmark or an automatic G-TEX model. The [DITTO probe](DITTO_INTEGRATION.md)
 tested six selected synthetic pairs with oracle masks and renderer metric depth;
 it did not estimate the initial nozzle frame, remove camera motion or validate
-transfer to changed webs. The spray tool is a generic proxy, not measured 25D497.
+transfer to changed webs. The old spray tool is a generic proxy. The approved
+[hopper simulation pilot](HOPPER_SIMULATION_PILOT.md) adds an unmeasured G-TEX-style
+shape and descriptive matched size/visibility tests, not a measured 25D497 model
+or a new learned-model comparison.
 
 No real G-TEX accuracy, geometry/occlusion effect size, unknown-tool metric RGB
 generalization, VLA gain or coating-quality improvement is established. The next

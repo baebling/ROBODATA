@@ -62,7 +62,11 @@ RGB-only extraction or task-relative tool frames are new.
 The [G-TEX experiment protocol](docs/HOPPER_GUN_EXPERIMENT.md) separates physical
 geometry, projected occupancy and tool-caused surface occlusion, with independent
 GT and accuracy/coverage reporting. This is a proposed study, not measured
-G-TEX performance or an implemented occlusion benchmark.
+G-TEX performance. An approved [Blender hopper pilot](docs/HOPPER_SIMULATION_PILOT.md)
+now implements the simulator-only visibility part: three unmeasured hopper sizes
+and four viewpoint/control groups, with fixed body/nozzle/landmarks, first-hit
+occlusion, occupancy, validity and temporal gaps. It is not a measured 25D497
+mesh, a real-data pilot or an evaluation of learned perception.
 
 ## Train RGB Perception
 

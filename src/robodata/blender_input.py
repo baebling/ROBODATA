@@ -99,6 +99,14 @@ def assemble_rendered(render_root: Path | str, output_root: Path | str) -> Path:
     if convention not in {"ray_distance", "axial_z"}:
         raise ValueError("Unknown rendered depth convention")
     shape = (camera.height, camera.width)
+    tool_ids = meta.get("tool_label_ids", [2])
+    if (
+        not isinstance(tool_ids, list)
+        or not tool_ids
+        or len(set(tool_ids)) != len(tool_ids)
+        or any(type(i) is not int or i <= 0 or i == 3 or i > 65535 for i in tool_ids)
+    ):
+        raise ValueError("Invalid tool object label IDs")
     for f in frames:
         for field in ["rgb_path", "depth_path", "labels_path"]:
             _input_path(root, f[field])
@@ -146,9 +154,10 @@ def assemble_rendered(render_root: Path | str, output_root: Path | str) -> Path:
             labels = cv2.imread(str(_input_path(root, f["labels_path"])), cv2.IMREAD_UNCHANGED)
             if labels is None or labels.shape != shape:
                 raise ValueError("Rendered object labels must be single-channel aligned images")
-            for name, index in [("tool", 2), ("surface", 3)]:
+            for name, indices in [("tool", tool_ids), ("surface", [3])]:
                 cv2.imwrite(
-                    str(out / f"masks/{name}_{i:05d}.png"), (labels == index).astype(np.uint8) * 255
+                    str(out / f"masks/{name}_{i:05d}.png"),
+                    np.isin(labels, indices).astype(np.uint8) * 255,
                 )
             video.write(rgb)
             observations.append(

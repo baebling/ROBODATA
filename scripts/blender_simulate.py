@@ -15,6 +15,7 @@ from mathutils import Euler, Matrix, Vector
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from robodata.blender_geometry import (  # noqa: E402
     nozzle_relation,
+    scenario_tool_parts,
     surface_frame_identity,
     work_surface_transform,
 )
@@ -32,7 +33,17 @@ def material(name, color, metallic=0.0):
 
 
 def mesh_object(
-    name, kind, center, size=None, radius=None, length=None, parent=None, mat=None, index=0
+    name,
+    kind,
+    center,
+    size=None,
+    radius=None,
+    length=None,
+    parent=None,
+    mat=None,
+    index=0,
+    radius_top=None,
+    rotation=None,
 ):
     if kind == "box":
         bpy.ops.mesh.primitive_cube_add(size=1)
@@ -42,12 +53,21 @@ def mesh_object(
     elif kind == "cylinder":
         bpy.ops.mesh.primitive_cylinder_add(vertices=32, radius=radius, depth=length)
         obj = bpy.context.object
-    else:
+    elif kind == "cone":
+        bpy.ops.mesh.primitive_cone_add(
+            vertices=48, radius1=radius, radius2=radius_top, depth=length
+        )
+        obj = bpy.context.object
+    elif kind == "sphere":
         bpy.ops.mesh.primitive_uv_sphere_add(segments=16, ring_count=8, radius=radius)
         obj = bpy.context.object
+    else:
+        raise ValueError("Unknown proxy primitive: " + kind)
     obj.name = name
     obj.parent = parent
     obj.location = center
+    if rotation is not None:
+        obj.rotation_euler = rotation
     obj.pass_index = index
     if mat is not None:
         obj.data.materials.append(mat)
@@ -108,6 +128,7 @@ def setup_scene(cfg, scenario):
         "dark": material("Grip", (0.055, 0.065, 0.07)),
         "brass": material("NozzleBrass", (0.72, 0.48, 0.10), 0.7),
         "floor": material("Floor", (0.17, 0.19, 0.21)),
+        "hopper": material("IllustrativeHopper", (0.82, 0.85, 0.83)),
     }
     height = cfg["surface_height_m"]
     length, width, bh = cfg["beam_length_m"], cfg["beam_width_m"], cfg["beam_height_m"]
@@ -149,7 +170,7 @@ def setup_scene(cfg, scenario):
     scene.collection.objects.link(tool)
     tool.empty_display_type, tool.empty_display_size = "ARROWS", 0.10
     tool.rotation_mode = "QUATERNION"
-    for part in cfg["proxy_parts"]:
+    for part in scenario_tool_parts(cfg, scenario):
         mesh_object(
             part["name"],
             part["kind"],
@@ -159,7 +180,9 @@ def setup_scene(cfg, scenario):
             length=part.get("length"),
             parent=tool,
             mat=mats[part["material"]],
-            index=2,
+            index=part.get("label_id", 2),
+            radius_top=part.get("radius_top"),
+            rotation=part.get("rotation_rad"),
         )
     colors = [
         (0.9, 0.06, 0.06),
@@ -418,11 +441,14 @@ def render_scenario(cfg, scenario, root, config_hash, render_provenance):
         "surface_frame_id": surface_frame_identity(cfg),
         "depth_convention": "axial_z",
         "tool_points_m": cfg["tool_points_m"],
+        "tool_label_ids": sorted({2, *(p.get("label_id", 2) for p in cfg["proxy_parts"])}),
         "surface_points_m": cfg["surface_points_m"],
         "settings": {
             "render_provenance": render_provenance,
             "config_sha256": config_hash,
             "config": cfg,
+            "scenario": scenario,
+            "effective_tool_parts": scenario_tool_parts(cfg, scenario),
             "render_device": scene.cycles.device,
             "proxy_note": "coloured marker centers on an illustrative calibration gun",
         },

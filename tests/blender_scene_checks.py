@@ -32,4 +32,24 @@ for i, (point, axis, status, part) in enumerate(checks):
     assert relation["scene_ray_first_beam_part"] == part, relation
     assert relation["scene_ray_agrees"], relation
     print("ROBODATA_SCENE_CHECK", status, part, flush=True)
-print("ROBODATA_SCENE_CHECKS_PASSED", len(checks), flush=True)
+hopper_cfg = json.loads((root / "configs/blender_hopper_simulation.json").read_text())
+for scale in [0.75, 1.0, 1.25]:
+    case = {**scenario, "name": f"hopper_geometry_{scale}", "hopper_scale": scale}
+    scene, tool, camera, S, *_ = renderer["setup_scene"](hopper_cfg, case)
+    renderer["set_pose"](hopper_cfg, case, tool, camera, S, 0)
+    bpy.context.view_layer.update()
+    hopper = next(o for o in scene.objects if o.name.startswith("IllustrativeHopper"))
+    body = next(o for o in scene.objects if o.name.startswith("GunBody"))
+    nozzle = next(o for o in scene.objects if o.name.startswith("Nozzle"))
+    local_vertices = [
+        hopper.location + hopper.rotation_euler.to_matrix() @ v.co for v in hopper.data.vertices
+    ]
+    assert abs(max(v.y for v in local_vertices) + 0.04) < 1e-6, "Attachment moved"
+    assert abs(max(v.x for v in local_vertices) - 0.125 * scale) < 1e-6
+    assert abs(body.dimensions.x - 0.12) < 1e-6, "Body was scaled with hopper"
+    assert abs(nozzle.dimensions.z - 0.046) < 1e-6, "Nozzle was scaled with hopper"
+    assert hopper.pass_index == 4 and nozzle.pass_index == 5 and body.pass_index == 2
+    relation = renderer["nozzle_reference"](scene, hopper_cfg, tool, S)
+    assert relation["status"] == "work_face_hit" and relation["scene_ray_agrees"]
+    print("ROBODATA_HOPPER_SCENE_CHECK", scale, flush=True)
+print("ROBODATA_SCENE_CHECKS_PASSED", len(checks) + 3, flush=True)

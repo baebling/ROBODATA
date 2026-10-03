@@ -162,3 +162,20 @@ estimated rays in a separate preview label band. Six actual Blender geometry
 checks pass, including the reviewer-reported 5-micrometer standoff regression
 which failed before the origin-offset fix. Format/lint and mypy are checked
 separately before commit; independent read-only code review was used.
+
+## Hopper Visibility Follow-Up: 2026-10-03
+
+The [hopper pilot](HOPPER_SIMULATION_PILOT.md) rendered/evaluated 12 episodes,
+96 frames and 24 paired RGB/RGB-D runs. All 96 nozzle rays independently agree
+with actual Blender beam meshes. Renderer source hash matches every raw episode.
+The three actual hopper mesh checks preserve attachment/body/nozzle dimensions
+and part IDs; together with six beam-ray controls, nine Blender checks pass.
+
+Fresh verification: 115 pytest tests pass with PyTorch available; 35 files pass
+format checking (including renderer), lint passes, and mypy passes 22 source
+files. Added tests cover amodal ROI, depth-aware first-hit attribution, missing/
+empty ROI nulls, separate out-of-view area, validity gaps, hopper-only scaling,
+multi-part tool masks and evaluation-reference exclusion from inference. An
+independent read-only review found no actionable issues in the change. Raw
+images, the labelled contact sheet and report were inspected. Boundary raster
+aliasing is not exhaustively tested; no practical perception accuracy is claimed.

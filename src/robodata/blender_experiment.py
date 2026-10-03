@@ -4,15 +4,99 @@ import json
 from collections import Counter
 from pathlib import Path
 
+import cv2
 import numpy as np
 from PIL import Image, ImageDraw
 
 from .blender_geometry import nozzle_relation
 from .blender_input import assemble_rendered, camera_from_blender
+from .blender_occlusion import (
+    occlusion_metrics,
+    project_roi,
+    roi_out_of_view_fraction,
+    validity_summary,
+)
 from .evaluation import evaluate
 from .export import read_episode, write_json
 from .pipeline import run_episode
 from .visualization import overlay_frames, plot_episode
+
+
+def measure_occlusion(source, dataset, metadata) -> dict:
+    """Ground-truth visibility ONLY, stored alongside evaluation, never in the manifest."""
+    cfg = metadata["settings"]["config"]
+    bounds = cfg["surface_roi_bounds_m"]
+    records = []
+    shape = (metadata["height"], metadata["width"])
+    for frame in metadata["frames"]:
+        C_S = camera_from_blender(frame["T_world_camera"]) @ np.asarray(frame["T_world_surface"])
+        roi, expected = project_roi(metadata["camera_matrix"], C_S, shape, bounds)
+        labels = cv2.imread(str(source / frame["labels_path"]), cv2.IMREAD_UNCHANGED)
+        depth = np.load(dataset / f"depth/{frame['frame_index']:05d}.npy", allow_pickle=False)
+        metrics = occlusion_metrics(
+            roi,
+            expected,
+            labels,
+            depth,
+            metadata.get("tool_label_ids", [2]),
+            cfg["occlusion_depth_tolerance_m"],
+        )
+        metrics["roi_out_of_view_fraction"] = roi_out_of_view_fraction(
+            metadata["camera_matrix"], C_S, shape, bounds
+        )
+        records.append(
+            {
+                "frame_index": frame["frame_index"],
+                "timestamp_sec": frame["timestamp_sec"],
+                **metrics,
+                "visible_tool_landmarks": sum(
+                    p["visible"] for p in frame["tool_keypoints"].values()
+                ),
+                "visible_surface_landmarks": sum(
+                    p["visible"] for p in frame["surface_keypoints"].values()
+                ),
+                "tip_visible": frame["tool_keypoints"].get("tip", {}).get("visible", False),
+                "axis_base_visible": frame["tool_keypoints"]
+                .get("axis_base", {})
+                .get("visible", False),
+            }
+        )
+    summary = {}
+    for key in [
+        "tool_image_occupancy",
+        "tool_roi_occlusion",
+        "total_roi_occlusion",
+        "roi_out_of_view_fraction",
+    ]:
+        values = [r[key] for r in records if r[key] is not None]
+        summary["mean_" + key] = float(np.mean(values)) if values else None
+        summary[key + "_known_frames"] = len(values)
+    return {
+        "scope": "simulator-only fixed physical ROI / first-visible-hit labels and axial depth",
+        "reference_is_model_input": False,
+        "geometry_source": cfg.get("geometry_source", "synthetic_proxy"),
+        "roi_bounds_surface_m": bounds,
+        "surface_markers_excluded_as_occluders": True,
+        "summary": summary,
+        "frames": records,
+    }
+
+
+def _occlusion_strata(episode, records):
+    bands = [("low", 0, 0.25), ("medium", 0.25, 0.5), ("high", 0.5, 1.000001)]
+    result = {}
+    for name, low, high in bands:
+        pairs = [
+            (f, r)
+            for f, r in zip(episode.frames, records, strict=True)
+            if r["tool_roi_occlusion"] is not None and low <= r["tool_roi_occlusion"] < high
+        ]
+        result[name] = {
+            "frames": len(pairs),
+            "valid_frames": sum(f.quality.valid for f, _ in pairs),
+        }
+    result["unknown"] = {"frames": sum(r["tool_roi_occlusion"] is None for r in records)}
+    return result
 
 
 def relationship_diagnostics(episode, metadata) -> dict:
@@ -174,7 +258,7 @@ def run_blender_experiment(render_root: Path | str, output_root: Path | str) -> 
             type(declared_frames) is not int or len(metadata["frames"]) != declared_frames
         ):
             raise ValueError("Rendered frame count differs from effective configuration")
-    rows, previews, durations = [], [], []
+    rows, previews, durations, contact_images = [], [], [], []
     out.mkdir(parents=True)
     for source in sources:
         name = source.name
@@ -186,6 +270,10 @@ def run_blender_experiment(render_root: Path | str, output_root: Path | str) -> 
         stationary = bool(np.max(np.linalg.norm(gt_points - gt_points[0], axis=1)) < 1e-6)
         meta = json.loads((source / "render_metadata.json").read_text(encoding="utf-8"))
         has_relations = all("nozzle_reference" in frame for frame in meta["frames"])
+        occlusion = None
+        if "surface_roi_bounds_m" in meta.get("settings", {}).get("config", {}):
+            occlusion = measure_occlusion(source, dataset, meta)
+            write_json(case / "occlusion_reference.json", occlusion)
         by_mode = {}
         for mode in ["rgb", "rgbd"]:
             folder = case / mode
@@ -210,6 +298,22 @@ def run_blender_experiment(render_root: Path | str, output_root: Path | str) -> 
                 "failure_counts": dict(failures),
                 "stationary_prediction_span_m": span,
             }
+            if occlusion is not None:
+                scenario = meta["settings"].get("scenario", {})
+                row.update(
+                    hopper_scale=scenario.get("hopper_scale", 1),
+                    view=scenario.get("view", "unspecified"),
+                    camera_motion=meta["camera_motion"],
+                    occlusion=occlusion["summary"],
+                    validity=validity_summary(
+                        [f.quality.valid for f in episode.frames],
+                        [f.quality.full_pose_valid for f in episode.frames],
+                        meta["fps"],
+                    ),
+                    action_valid_fraction=sum(f.action.valid for f in episode.frames)
+                    / len(episode.frames),
+                    occlusion_strata=_occlusion_strata(episode, occlusion["frames"]),
+                )
             if has_relations:
                 diagnostics = relationship_diagnostics(episode, meta)
                 write_json(folder / "nozzle_relationship.json", diagnostics)
@@ -231,6 +335,28 @@ def run_blender_experiment(render_root: Path | str, output_root: Path | str) -> 
                 draw.text((8, 5), f"SYNTHETIC | {name}", fill="white")
                 draw.text((8, 20), "ORACLE LANDMARKS - NO DETECTOR / SPRAY PHYSICS", fill="white")
             image.save(case / f"relationship_{frame['frame_index']:05d}.png")
+            if occlusion is not None and frame["frame_index"] == len(meta["frames"]) // 2:
+                tile = Image.new("RGB", (640, image.height + 34), "black")
+                tile.paste(image, (0, 0))
+                draw = ImageDraw.Draw(tile)
+                value = occlusion["frames"][frame["frame_index"]]
+                fraction = value["tool_roi_occlusion"]
+                text = "unknown" if fraction is None else f"{100 * fraction:.1f}%"
+                draw.text(
+                    (8, image.height + 4),
+                    f"Tool occupancy {100 * value['tool_image_occupancy']:.1f}% | "
+                    f"fixed-ROI occlusion {text}",
+                    fill="white",
+                )
+                rgb_count = sum(f.quality.valid for f in by_mode["rgb"].frames)
+                depth_count = sum(f.quality.valid for f in by_mode["rgbd"].frames)
+                draw.text(
+                    (8, image.height + 19),
+                    f"Valid RGB {rgb_count}/{len(meta['frames'])} | "
+                    f"RGB-D {depth_count}/{len(meta['frames'])} | UNMEASURED PROXY",
+                    fill="white",
+                )
+                contact_images.append(tile)
             previews.append(image)
             durations.append(max(10, round(1000 / meta["fps"])))
         print(f"ROBODATA_EVALUATED {name}", flush=True)
@@ -246,6 +372,12 @@ def run_blender_experiment(render_root: Path | str, output_root: Path | str) -> 
     previews[0].save(
         out / "preview.gif", save_all=True, append_images=previews[1:], duration=durations, loop=0
     )
+    if contact_images:
+        tile_w, tile_h = contact_images[0].size
+        contact = Image.new("RGB", (tile_w * 3, tile_h * ((len(contact_images) + 2) // 3)), "black")
+        for i, tile in enumerate(contact_images):
+            contact.paste(tile, ((i % 3) * tile_w, (i // 3) * tile_h))
+        contact.save(out / "hopper_comparison.png")
     lines = [
         "# Blender H-Beam Geometry Experiment",
         "",
@@ -307,6 +439,45 @@ def run_blender_experiment(render_root: Path | str, output_root: Path | str) -> 
             "A valid geometric state does not imply that the spray reaches the working face.",
             "",
         ]
+    if contact_images:
+        lines += [
+            "## Hopper Size / Visibility Pilot",
+            "",
+            "UNMEASURED illustrative G-TEX-style exterior, NOT a reconstruction of part 25D497.",
+            "Only hopper geometry is scaled about its fixed attachment; gun, nozzle, landmarks,",
+            "path, camera sequence and seed stay identical within each view group.",
+            "The 0.8 x 0.4 m physical web ROI stays fixed. Its in-image amodal projection",
+            "includes hidden pixels. Tool occlusion requires first-hit tool depth in front",
+            "of the ROI plane; surface calibration spheres are excluded. Missing ROI depth",
+            "or an empty projection produces null occlusion, not zero. Out-of-view area is",
+            "recorded separately. No hands, mist, motion blur or materials are simulated.",
+            "",
+            "| Scenario | Mode | Tool image % | Tool ROI hidden % | "
+            "Valid % | Full pose % | Longest valid s |",
+            "|---|---|---:|---:|---:|---:|---:|",
+        ]
+        for row in rows:
+            if "occlusion" not in row:
+                continue
+            occ, validity = row["occlusion"], row["validity"]
+            hidden = occ["mean_tool_roi_occlusion"]
+            text = "N/A" if hidden is None else f"{100 * hidden:.1f}"
+            lines.append(
+                f"| {row['scenario']} | {row['mode']} | "
+                f"{100 * occ['mean_tool_image_occupancy']:.1f} | {text} | "
+                f"{100 * validity['valid_fraction']:.1f} | "
+                f"{100 * validity['full_pose_fraction']:.1f} | "
+                f"{validity['longest_valid_segment_sec']:.2f} |"
+            )
+        lines += [
+            "",
+            "Per-frame visibility: occlusion_reference.json (evaluation only).",
+            "Coverage by realized occlusion band, unknowns, action coverage and failure gaps",
+            "are in comparison.json. This short pilot is descriptive, not statistical evidence",
+            "of real RGB-only feasibility or a comparison against learned perception models.",
+            "",
+        ]
+    if any("nozzle_relationship" in row for row in rows):
         for mode in ["rgb", "rgbd"]:
             target_rows = [
                 row
