@@ -65,10 +65,16 @@ unseen tools remains open.
 
 Process ON/OFF and primitive labels are optional sourced annotations. Automatic
 process/primitive classification, force/material estimation, arbitrary monocular
-surface reconstruction, DITTO-style correspondence-based trajectory warping,
+surface reconstruction, end-to-end DITTO-style cross-scene trajectory transfer,
 robot IK/planning and robot policy learning are not implemented. DITTO informs
 the representation/transfer discussion; this repository is not a reproduction
 of its robot controller.
+
+An optional official-DITTO RGB-D body-motion probe is now available in
+`scripts/probe_ditto_blender.py`; see `docs/DITTO_INTEGRATION.md`. It evaluates
+pairwise relative motion with bootstrap masks and checks the official warp API.
+It does not yet initialize a functional nozzle frame, remove camera motion or
+populate the canonical episode pipeline.
 
 Independent tracker CSV poses require surveyed/calibrated transforms and clock
 offset. A LiDAR surface survey may supply calibration, but there is no

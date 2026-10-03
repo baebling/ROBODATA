@@ -46,6 +46,12 @@ web-facing frame, 11 motion/edge/occlusion conditions, and separate finite-beam
 nozzle-ray diagnostics. Preview overlays distinguish GT rays from estimated RGB
 rays. Nozzle occlusion remains an estimation failure, not a fabricated pose.
 
+An optional [official-DITTO probe](docs/DITTO_INTEGRATION.md) now tests RAFT/RANSAC
+relative motion on visible tool bodies in these renders. It needs the separate
+DITTO runtime, metric depth and bootstrap object masks. It does not yet estimate
+the initial nozzle frame or remove helmet-camera motion. ToolEENet's published
+input requirements and checkpoint/category limitations are documented alongside it.
+
 ## Train RGB Perception
 
 Install a platform-appropriate PyTorch build, or `pip install -e '.[learning]'`.
