@@ -1,0 +1,20 @@
+# Real-data template, not an executed experiment. Paths are relative to this file.
+# Place a legitimately obtained original VGGT checkpoint in models/vggt/.
+# Rectify video and annotations with the calibrated camera before inference.
+manifest_path: ../data/real_pilot/manifest.json
+checkpoint_path: ../models/vggt/model.safetensors
+device: cuda
+max_frames: 8
+frame_indices: null
+surface_frame_id: mdf_hbeam_web_01
+# Empty points deliberately permit normalized reconstruction only, NOT metric poses.
+# Add >=4 physically identified points in the SAME fixed surface frame as extraction.
+surface_points_m: {}
+calibration_source: unavailable
+alignment_frame_indices: null
+min_raw_depth_confidence: 1.0
+min_keypoint_confidence: 0.5
+max_alignment_error_m: 0.02
+max_reprojection_error_px: 5.0
+exclude_tool_pixels: true
+seed: 42

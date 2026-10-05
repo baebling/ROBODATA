@@ -17,6 +17,7 @@ from .observations import (
     Manifest,
     depth_tool,
     pnp_observation,
+    pnp_tool_observation,
     read_depth,
     read_mask,
     video_frames,
@@ -68,6 +69,18 @@ def run_episode(
     surface_reference = None
     frames = []
     video = resolve(root, manifest.video_path)
+    surface_cache = None
+    if cfg.surface_method == "vggt":
+        from .vggt_bridge import load_surface_cache
+
+        assert cfg.vggt_surface_path is not None
+        surface_cache = load_surface_cache(
+            resolve(path.parent, cfg.vggt_surface_path),
+            video,
+            manifest.camera,
+            manifest.data_kind,
+            cfg.surface_frame_id,
+        )
     for i, timestamp, rgb in video_frames(video, manifest.camera, manifest.timestamps_sec):
         obs = inputs.get(i, FrameInput(frame_index=i)).model_copy(deep=True)
         if cfg.tracking:
@@ -94,6 +107,11 @@ def run_episode(
             )
             if cfg.surface_method == "pnp":
                 surf = pnp_observation(obs.surface, cfg.surface, manifest.camera, cfg)
+            elif cfg.surface_method == "vggt":
+                from .vggt_bridge import cached_surface
+
+                assert surface_cache is not None
+                surf = cached_surface(surface_cache, i, timestamp)
             else:
                 assert depth is not None
                 if surface_reference is None:
@@ -118,7 +136,7 @@ def run_episode(
                 surf = surface_reference.model_copy(deep=True)
             try:
                 tool = (
-                    pnp_observation(obs.tool, cfg.tool, manifest.camera, cfg)
+                    pnp_tool_observation(obs.tool, manifest.camera, cfg)
                     if cfg.mode == "rgb"
                     else (depth_tool(obs.tool, depth, manifest.camera, cfg))
                 )
@@ -174,6 +192,10 @@ def run_episode(
         )
     if any(i >= len(frames) for i in inputs):
         raise ValueError("Observation index outside video")
+    if surface_cache is not None and any(
+        s.frame_index >= len(frames) for s in surface_cache.frames
+    ):
+        raise ValueError("VGGT surface cache frame outside video")
     episode = Episode(
         episode_id=manifest.episode_id,
         task_name=manifest.task_name,
@@ -198,6 +220,15 @@ def run_episode(
     )
     episode.provenance["manifest_sha256"] = hashlib.sha256(manifest_path.read_bytes()).hexdigest()
     episode.provenance["observations"] = manifest.provenance
+    if surface_cache is not None:
+        from .vggt_bridge import file_sha256
+
+        assert cfg.vggt_surface_path is not None
+        episode.provenance["vggt_surface"] = {
+            "cache_sha256": file_sha256(resolve(path.parent, cfg.vggt_surface_path)),
+            "calibration_source": surface_cache.calibration_source,
+            "reconstruction": surface_cache.provenance,
+        }
     add_labels(episode, cfg.horizon_sec, cfg.timestamp_tolerance_sec)
     out.mkdir(parents=True)
     save_episode(episode, out / "episode.json")

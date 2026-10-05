@@ -1,0 +1,9 @@
+{
+  "render_root": "outputs/helmet_sensors_20261003_02",
+  "expected_scenarios": 16,
+  "expected_frames_per_scenario": 8,
+  "seed": 42,
+  "depth_check_atol_m": 0.005,
+  "depth_check_rtol": 0.0,
+  "scope": "Unmodified fireproof_workarea RGB-PnP tracker module diagnostic. First-frame ideal synthetic RGB-D calibration, then RGB-only updates. Not full S1-S5 pipeline, markerless monocular metric reconstruction, semantic surface or tool-pose estimation. Smartphone depth seeds are hypothetical external calibration."
+}

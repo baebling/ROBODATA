@@ -203,3 +203,99 @@ tool while preserving its flag/method; an occluded hand still rejects inference.
 Final read-only review of that behavior found no issue. Real calibration, worker
 identity, grip changes, articulated hand templates, gloves, sensor error and
 unknown-surface reconstruction remain unverified.
+
+## YOLO Surface Tracking Follow-Up: 2026-10-03
+
+The [surface pilot](YOLO_SURFACE_PILOT.md) trains actual YOLO26n-seg for 40 epochs
+on 72 train / 24 validation synthetic hopper frames. It executes prediction and
+explicit BoT-SORT tracking on the 128 reserved helmet frames. Sixteen tool-free
+references were rendered with background Blender 5.2.2, without saving raw
+source scenes or touching the interactive scene. Reference RGB/source-scene
+hashes match. Known metric fixture geometry and intrinsics are explicit inputs;
+GT labels/poses and depth enter evaluation only.
+
+Final guarded evaluation is `outputs/yolo_surface_results_20261003_03`; its
+summary exactly matches the preceding corrected-calibration diagnostic. Web
+masks occur in 64/128 per-frame and 52/128 tracked frames; mean visible-label
+IoUs are 0.3237 and 0.2868. Per-frame/tracked fixture localization accepts 6/128
+poses; planar mapping accepts 9/128 with conditional mean position error
+0.0779 m and rotation error 4.3849 degrees. The single ultrawide accepted map
+pose is wrong by 0.5852 m and 27.54 degrees. Internal acceptance is not accuracy.
+Only 2/16 maps initialize. No overall improvement, complete action trajectory,
+hand/tool improvement or real sensor performance is established.
+
+An initial failed run was preserved; reference fixtures were then detected from
+full tool-free RGB instead of clipping them with the learned mask. Weights and
+thresholds were unchanged. These are development diagnostics, not an untouched
+final test. Completed training/checkpoint/manifest binding and exact
+metadata-listed evaluation inventory now have fail-closed checks, including
+source RGB bytes, decoded pixels, metadata, frame indices and timestamps.
+Identical train/val images are excluded; shared synthetic assets remain a risk.
+
+Fresh repository checks: 234 pytest tests pass with PyTorch available; 51 files
+pass formatting including the reference script, lint passes, and mypy passes
+30 source files with repository configuration. Guard regressions first failed
+before implementation, then passed. Actual training, sixteen RGB reference
+renders and full final evaluation completed. Contact-sheet images were inspected.
+Independent read-only review identified the two training/input audit gaps and
+prompted their fixes. Narrow re-review found no actionable issues; the reviewer
+independently passed all sixteen experiment tests and audited the actual
+checkpoint and 128 reserved inputs. Optional YOLO runtime imports/inference work, but its
+`pip check` retains an unrelated inherited missing `pycairo`/`pygobject` conflict.
+
+## Local Workarea Algorithm Follow-Up: 2026-10-03
+
+The [local algorithm pilot](WORKAREA_ALGORITHM_PILOT.md) runs the original
+RGB-PnP tracker on all sixteen helmet sequences: 46/112 post-reference camera
+poses returned; conditional mean camera-center error 0.121737 m, maximum
+0.351931 m, mean rotation error 6.426947 degrees. No later depth, GT pose,
+mask/keypoint or ZED VIO enters inference. Initial ideal simulator depth is an
+explicit metric prior even for hypothetical phone RGB-D initialization.
+
+Original ArraySurfaceRecognizer / real_best.pt was executed separately on
+all sixteen initial RGB-D captures. Zero accepted: seven failed observed-face
+support, nine lacked selected work-area point cloud. These results are not
+a recognition-to-tracking chain. No tool pose or canonical action was produced.
+Full included SVO replay did not run because usable ZED SDK/pyzed.sl was absent;
+recognition/tracking counts remain unavailable. No dependencies were installed.
+Original payload hashes match before/after; cloned import side effects and
+all results stay under distinct output directories, preserving raw renders.
+
+Review prompted regressions for camera-center rather than map-origin scoring,
+zero-skew homogeneous camera calibration and independent raw initial-depth
+checks. Red/green regressions passed; corrected Run02 reran all 16 conditions.
+Its exact executed runner is saved/hash-bound; later formatting-only wrapping
+does not alter algorithm behavior. Original model/thresholds were not changed.
+An isolated original frame utility counterexample produces determinant -1;
+it was not used in tracking and is not accepted as an SE(3) action frame.
+
+Fresh checks: 248 pytest tests pass, including 14 focused workarea tests;
+format check passes for 53 files, lint passes, mypy passes 31 source files.
+Independent narrow review found no further actionable guard/scoring issue,
+checked all 16 depth seeds and 100 independent scoring cases, but did not
+independently validate the algorithm's performance. Contact sheet inspected.
+
+## VGGT RGB Bridge Follow-Up
+
+Original pretrained VGGT-1B ran on two existing real DITTO sponge-tray RGB
+images using RTX 3080 Ti/bfloat16. Camera/depth inference completed with depth
+shape 2 x 294 x 518. No sensor depth, GT, metric alignment, tool pose estimation
+or construction accuracy evaluation was used in this runtime probe. Results
+and source/input/checkpoint hashes: outputs/vggt_rgb_probe_20261003_01.
+The upstream autocast deprecation warning is retained; no runtime install or
+new simulator experiment was needed.
+
+The measured surface bridge, original/model pixel mapping, normalized-to-metric
+camera composition, typed cache identity/timestamps, sparse-gap preservation
+and body-to-nozzle RGB composition are covered by 24 focused engineering tests.
+Independent review reproduced a partial-anchor validation bypass and a resize
+rounding mismatch. Eight red/green regressions now reject bad camera poses with
+one to three visible anchors and match upstream rounding at boundary aspect
+ratios. Four anchors are required to fit the reference, not to check an already
+estimated pose. Neural runner test doubles only cover orchestration/export;
+the separate real-RGB probe verifies actual pretrained execution.
+
+Fresh final checks: 272 pytest tests passed (16.74 s), format check passed for
+55 files, lint passed, mypy passed 33 source files, and git diff --check passed.
+These checks establish implementation behavior, not accurate real G-TEX/H-beam
+trajectories or completed dense full-video refinement. See VGGT_INTEGRATION.md.

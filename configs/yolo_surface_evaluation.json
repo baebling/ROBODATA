@@ -1,0 +1,19 @@
+{
+  "render_root": "outputs/helmet_sensors_20261003_02",
+  "reference_root": "outputs/yolo_surface_references_20261003_01",
+  "training_root": "outputs/yolo_surface_training_20261003_01",
+  "inference": {
+    "imgsz": 640, "conf": 0.25, "iou": 0.7,
+    "device": 0, "retina_masks": true, "max_det": 30, "verbose": false
+  },
+  "tracker": "botsort.yaml",
+  "seed": 42,
+  "fixture_pnp_max_error_px": 4.0,
+  "tool_mask_dilation_px": 4,
+  "map": {
+    "max_fb_error_px": 1.5, "max_reprojection_px": 3.0,
+    "min_inliers": 6, "max_features": 300,
+    "min_spread_px": 20.0, "max_lk_error": 30.0
+  },
+  "scope": "Synthetic surface-only study. YOLO learned masks; RGB colored fixtures plus known metric patch for initialization. Planar reference localization, not full SLAM. No test poses, depth or labels used in inference."
+}

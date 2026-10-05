@@ -14,6 +14,11 @@ dependencies = [
 
 [project.optional-dependencies]
 learning = ["torch>=2.2"]
+vggt = [
+  "torch>=2.3", "torchvision>=0.18", "Pillow", "huggingface_hub", "einops", "safetensors",
+  "vggt @ git+https://github.com/facebookresearch/vggt.git@a288dd0f14786c93483e45524328726ab7b1b4ce"
+]
+yolo = ["ultralytics==8.4.78", "lap==0.5.12"]
 hand = ["mediapipe==0.10.21", "numpy>=1.26,<2", "opencv-python-headless==4.11.0.86"]
 dev = ["pytest>=8", "ruff>=0.6", "mypy>=1.11", "types-PyYAML"]
 

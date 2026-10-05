@@ -48,6 +48,20 @@ x (camera +y fallback). The reference remains fixed during the episode. It is
 view-dependent across episodes; independently calibrate it before GT comparison.
 Do not reset a centroid/reference every frame and call the result invariant.
 
+Optional RGB VGGT surface caches bind video SHA-256, original camera calibration,
+data kind, physical surface_frame_id, frame indices and timestamps. Normalized
+scene depth is not sensor depth and is not in meters until measured anchor
+alignment succeeds. Sparse/missing/rejected cache samples remain invalid; they
+are never held or interpolated. Cache provenance retains scale/alignment and
+the availability of per-frame calibrated RGB checks; a fit score is not a pose
+accuracy probability. See `VGGT_INTEGRATION.md`.
+
+For optional RGB body PnP, tool.points_m are in the body frame when T_body_tool
+and its calibration_source are supplied. Compose T_camera_body @ T_body_tool
+to obtain the functional nozzle pose before surface conversion. Without this
+option points_m retain their existing functional-frame meaning. RGB-D semantic
+keypoints and calibrated hand assistance do not reinterpret this body transform.
+
 Signed surface distance is tool point z in the surface frame. Standoff is its
 absolute value. Incidence is acos(dot(tool +z, -surface +z)): zero means directed
 normally into the working side. This convention avoids normal-sign ambiguity.

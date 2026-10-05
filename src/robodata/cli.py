@@ -54,6 +54,16 @@ def main(argv=None):
     )
     blender.add_argument("--render-root", type=Path, required=True)
     blender.add_argument("--output", type=Path, required=True)
+    vggt = sub.add_parser("vggt", help="Run offline VGGT and measured surface alignment")
+    vggt.add_argument("--config", type=Path, required=True)
+    vggt.add_argument("--output", type=Path, required=True)
+    probe = sub.add_parser(
+        "vggt-probe", help="Check pretrained VGGT on RGB images, without metric claims"
+    )
+    probe.add_argument("--images", type=Path, nargs="+", required=True)
+    probe.add_argument("--checkpoint", type=Path, required=True)
+    probe.add_argument("--output", type=Path, required=True)
+    probe.add_argument("--device", default="cuda")
     args = parser.parse_args(argv)
     try:
         if args.command == "demo":
@@ -135,6 +145,24 @@ def main(argv=None):
             from .blender_experiment import run_blender_experiment
 
             print(run_blender_experiment(args.render_root, args.output))
+        elif args.command == "vggt":
+            from .vggt_inference import run_vggt
+
+            result = run_vggt(args.config, args.output)
+            print(
+                json.dumps(
+                    {
+                        "selected_frames": len(result.frames),
+                        "metric_surface_frames": sum(f.estimate is not None for f in result.frames),
+                    }
+                )
+            )
+        elif args.command == "vggt-probe":
+            from .vggt_inference import probe_rgb_images
+
+            print(
+                json.dumps(probe_rgb_images(args.images, args.checkpoint, args.output, args.device))
+            )
     except (ValueError, FileNotFoundError, FileExistsError) as exc:
         parser.exit(2, f"robodata: {exc}\n")
 

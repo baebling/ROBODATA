@@ -205,6 +205,23 @@ def depth_tool(detection: Detection, depth, camera: Camera, cfg: RunConfig) -> E
     )
 
 
+def pnp_tool_observation(detection: Detection, camera: Camera, cfg: RunConfig) -> Estimate:
+    result = pnp_observation(detection, cfg.tool, camera, cfg)
+    if cfg.tool.T_body_tool is None:
+        return result
+    T = np.asarray(result.T_camera_frame) @ np.asarray(cfg.tool.T_body_tool)
+    return result.model_copy(
+        update={
+            "T_camera_frame": T.tolist(),
+            "origin_camera_m": T[:3, 3].tolist(),
+            "axis_camera": T[:3, 2].tolist(),
+            "frame_method": "body_pose_measured_functional_transform",
+            "calibration_source": cfg.tool.calibration_source,
+            "metric_scale_source": "measured_geometry",
+        }
+    )
+
+
 class FlowTracker:
     """Forward/backward checked KLT, reset by every supplied annotation."""
 

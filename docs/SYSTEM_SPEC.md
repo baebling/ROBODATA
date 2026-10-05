@@ -76,6 +76,14 @@ pairwise relative motion with bootstrap masks and checks the official warp API.
 It does not yet initialize a functional nozzle frame, remove camera motion or
 populate the canonical episode pipeline.
 
+An optional original-VGGT RGB bridge now predicts normalized scene cameras and
+depth, fits a metric surface from explicit measured RGB anchor correspondences,
+and supplies the existing canonical pipeline through a verified surface cache.
+RGB tool PnP also supports a measured body-to-functional-nozzle transform.
+This is not automatic G-TEX perception, dense full-video optimization or a real
+construction accuracy result. See `VGGT_INTEGRATION.md` for input contracts,
+gap handling, the real-RGB checkpoint probe and unresolved bottlenecks.
+
 Independent tracker CSV poses require surveyed/calibrated transforms and clock
 offset. A LiDAR surface survey may supply calibration, but there is no
 vendor-specific LiDAR or mocap acquisition driver. Inference never consumes

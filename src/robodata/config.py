@@ -34,11 +34,17 @@ class ObjectSpec(Contract):
     axis_from: str = "axis_base"
     axis_to: str = "tip"
     x_key: str | None = "side"
+    T_body_tool: list[list[float]] | None = None
+    calibration_source: str | None = None
 
     @model_validator(mode="after")
     def geometry(self):
         if any(len(p) != 3 or not np.isfinite(p).all() for p in self.points_m.values()):
             raise ValueError("Geometry points must be finite 3D meter values")
+        if self.T_body_tool is not None:
+            validate_transform(self.T_body_tool)
+            if self.calibration_source is None or not self.calibration_source.strip():
+                raise ValueError("Body-to-tool transform requires a sourced calibration")
         return self
 
 
@@ -49,7 +55,8 @@ class RunConfig(Contract):
     metric_scale_source: Literal["measured_geometry", "depth_sensor"] = "measured_geometry"
     camera_motion: Literal["static", "moving"] = "moving"
     surface_frame_id: str = "reference_patch"
-    surface_method: Literal["pnp", "depth_plane"] = "pnp"
+    surface_method: Literal["pnp", "depth_plane", "vggt"] = "pnp"
+    vggt_surface_path: str | None = None
     tool: ObjectSpec
     surface: ObjectSpec
     hand_assistance: HandAssistanceSpec | None = None
@@ -75,6 +82,12 @@ class RunConfig(Contract):
             raise ValueError("RGB tool geometry is required")
         if self.surface_method == "pnp" and len(self.surface.points_m) < 4:
             raise ValueError("Surface PnP requires persistent measured landmarks")
+        if self.surface_method == "vggt" and (self.mode != "rgb" or not self.vggt_surface_path):
+            raise ValueError("VGGT surface requires RGB mode and a sourced surface cache")
+        if self.surface.T_body_tool is not None or (
+            self.mode != "rgb" and self.tool.T_body_tool is not None
+        ):
+            raise ValueError("Body-to-tool calibration is supported only for RGB tool PnP")
         if self.surface_method == "depth_plane" and (
             self.mode != "rgbd" or self.camera_motion != "static"
         ):
