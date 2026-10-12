@@ -1,0 +1,7 @@
+{
+  "episode": 0,
+  "batch_size": 1,
+  "train_steps": 5,
+  "seed": 42,
+  "view": "camera_3"
+}

@@ -1,0 +1,9 @@
+{
+  "episode": 0,
+  "frame_count": 72,
+  "camera": "camera_3",
+  "depth_scale_m": 0.001,
+  "intrinsics_dtype": "float32",
+  "text_encoder_revision": "86b5e0934494bd15c9632b12f734a8a67f723594",
+  "seed": 0
+}

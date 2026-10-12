@@ -1,0 +1,46 @@
+{
+  "stage": "official_policy_execution_smoke",
+  "config": {
+    "episode": 0,
+    "batch_size": 1,
+    "train_steps": 5,
+    "seed": 42,
+    "view": "camera_3"
+  },
+  "official_model_parameters": 263135643,
+  "losses": [
+    0.8345006704330444,
+    1.8436050415039062,
+    1.6738277673721313,
+    1.662550687789917,
+    1.200365662574768
+  ],
+  "parameters_changed": true,
+  "action_shape": [
+    1,
+    4,
+    9
+  ],
+  "prediction_finite": true,
+  "rotation_roundtrip_max_abs_error": 2.8235872848170196E-07,
+  "gpu": "NVIDIA GeForce RTX 3080 Ti",
+  "peak_cuda_allocated_bytes": 6442764800,
+  "elapsed_sec": 3.2210495229999196,
+  "pose_source": "supplied public estimates; not recomputed or ground truth",
+  "observation_source": "unsegmented public RGB; no novel views",
+  "deviations": [
+    "single episode and small fixed batch",
+    "short optimization; no EMA or LR schedule",
+    "no held-out evaluation",
+    "no Grounded-SAM preprocessing",
+    "no Gaussian augmentation"
+  ],
+  "paper_results_reproduced": false,
+  "source": {
+    "upstream": "ec1c459ea27ca8e2a2f2787def1d1045ecb2a4ee",
+    "robomimic": "bb5a1cf4ff7b6040be46fc32e081e5b8712504e0"
+  },
+  "raw_tree_sha256": "b0a2dcbc5e53c9792828289b24074fe44b2124b8ef6e2acd0a869c620373c1a5",
+  "raw_unchanged": true,
+  "runner_sha256": "c8ca3869634c15035b5d6468391810af698946d55af204f763dc4ab1c26639bd"
+}

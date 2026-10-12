@@ -10,6 +10,10 @@ network, independent GT import/evaluation, masked NPZ export and visual reports.
 It is a runnable research baseline. Real construction-video accuracy is not
 established; no real pretrained tool detector is bundled.
 
+The isolated [Tool-as-Interface reproduction](reproductions/tool_as_interface/README.md)
+uses public hammer data and a separate environment. Its upstream component checks
+are not construction-video validation and do not replace this research pipeline.
+
 ## Run
 
 Python 3.10+ (WSL/Linux or Windows). From this repository:

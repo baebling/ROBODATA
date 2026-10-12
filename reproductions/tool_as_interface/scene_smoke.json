@@ -1,0 +1,13 @@
+{
+  "source_frame": 0,
+  "views": ["camera_3", "camera_4"],
+  "seed": 42,
+  "image_size": 224,
+  "generated_views": 10,
+  "model": "naver/MASt3R_ViTLarge_BaseDecoder_512_catmlpdpt_metric",
+  "model_revision": "06e7259f34c3060f322df5cb0c7b9094f57e41fc",
+  "gs_iterations": {
+    "pruning": 500,
+    "refinement": 100
+  }
+}
